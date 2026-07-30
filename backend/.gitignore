@@ -1,0 +1,13 @@
+# Dependency folders
+node_modules/
+
+# Environment variables (Passwords & Secret Keys)
+.env
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Production builds (Frontend එක හැදුවාම එන ඒවා)
+build/
+dist/
