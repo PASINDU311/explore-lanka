@@ -3,18 +3,19 @@ import { useNavigate, Link } from 'react-router-dom';
 import API from '../services/api';
 
 const Register = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     role: 'tourist',
-    vehicleType: 'TukTuk',
-    licenseNumber: '',
-    pricePerKm: 0
+    vehicleType: '',
+    vehicleNumber: '',
+    pricePerKm: '',
+    licenseNumber: ''
   });
-
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -23,70 +24,91 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setLoading(true);
 
     try {
       const payload = {
         name: formData.name,
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         role: formData.role,
         driverDetails: formData.role === 'driver' ? {
           vehicleType: formData.vehicleType,
-          licenseNumber: formData.licenseNumber,
-          pricePerKm: Number(formData.pricePerKm)
+          vehicleNumber: formData.vehicleNumber,
+          pricePerKm: Number(formData.pricePerKm),
+          licenseNumber: formData.licenseNumber
         } : {}
       };
 
       const res = await API.post('/auth/register', payload);
-      
-      // Token එක Save කරගෙන Home Page එකට Navigate කිරීම
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('user', JSON.stringify(res.data));
-      
-      alert('Registration Successful! Welcome to ExploreLanka.');
-      navigate('/');
-      window.location.reload(); // Navbar update වීමට
+
+      if (formData.role === 'driver') {
+        alert('Registration Successful! Your driver account is pending Admin Approval.');
+        navigate('/login');
+      } else {
+        // Tourist කෙනෙක් නම් එකපාරම Login කර සාදරයෙන් පිළිගැනීම
+        sessionStorage.setItem('token', res.data.token);
+        sessionStorage.setItem('user', JSON.stringify(res.data));
+        alert('Registration Successful!');
+        navigate('/');
+        window.location.reload();
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong');
+      setError(err.response?.data?.message || 'Registration failed.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ maxWidth: '400px', margin: '3rem auto', padding: '2rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-      <h2>Create Account 🌴</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <input type="text" name="name" placeholder="Full Name" value={formData.name} onChange={handleChange} required />
-        <input type="email" name="email" placeholder="Email Address" value={formData.email} onChange={handleChange} required />
-        <input type="password" name="password" placeholder="Password" value={formData.password} onChange={handleChange} required />
-        
-        <label>Account Type:</label>
-        <select name="role" value={formData.role} onChange={handleChange}>
-          <option value="tourist">Tourist / Traveler</option>
-          <option value="driver">Driver / Tour Guide</option>
-        </select>
+    <div style={{ maxWidth: '450px', margin: '2rem auto', padding: '2rem', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#fff' }}>
+      <h2 style={{ textAlign: 'center', color: '#0f172a' }}>📝 Register</h2>
 
-        {/* Driver කෙනෙක් තෝරාගතහොත් පමණක් පෙන්වන Inputs */}
+      {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: '0.6rem', borderRadius: '5px', marginBottom: '1rem', fontSize: '0.9rem' }}>{error}</div>}
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem' }}>Full Name</label>
+          <input type="text" name="name" value={formData.name} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem', borderRadius: '5px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem' }}>Email Address</label>
+          <input type="email" name="email" value={formData.email} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem', borderRadius: '5px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem' }}>Password</label>
+          <input type="password" name="password" value={formData.password} onChange={handleChange} required style={{ width: '100%', padding: '0.5rem', borderRadius: '5px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85rem' }}>Register As</label>
+          <select name="role" value={formData.role} onChange={handleChange} style={{ width: '100%', padding: '0.5rem', borderRadius: '5px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}>
+            <option value="tourist">Tourist (Traveler)</option>
+            <option value="driver">Driver</option>
+          </select>
+        </div>
+
+        {/* Driver Registration Extra Fields */}
         {formData.role === 'driver' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#f8fafc', padding: '1rem' }}>
-            <h4>Driver Details</h4>
-            <label>Vehicle Type:</label>
-            <select name="vehicleType" value={formData.vehicleType} onChange={handleChange}>
-              <option value="TukTuk">Tuk-Tuk</option>
-              <option value="Car">Car</option>
-              <option value="Van">Van</option>
-            </select>
-            <input type="text" name="licenseNumber" placeholder="License Number" value={formData.licenseNumber} onChange={handleChange} required />
-            <input type="number" name="pricePerKm" placeholder="Price Per KM (LKR)" value={formData.pricePerKm} onChange={handleChange} required />
+          <div style={{ background: '#f8fafc', padding: '0.8rem', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <h4 style={{ margin: 0, color: '#0284c7' }}>🛺 Driver Profile Details</h4>
+            <input type="text" name="vehicleType" placeholder="Vehicle Type (e.g., TukTuk, Car)" value={formData.vehicleType} onChange={handleChange} required style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+            <input type="text" name="vehicleNumber" placeholder="Vehicle Number (e.g., WP AB-1234)" value={formData.vehicleNumber} onChange={handleChange} required style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+            <input type="number" name="pricePerKm" placeholder="Price Per KM (LKR)" value={formData.pricePerKm} onChange={handleChange} required style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+            <input type="text" name="licenseNumber" placeholder="Driving License Number" value={formData.licenseNumber} onChange={handleChange} required style={{ width: '100%', padding: '0.4rem', borderRadius: '4px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
           </div>
         )}
 
-        <button type="submit" style={{ padding: '0.7rem', background: '#0284c7', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-          Register
+        <button type="submit" disabled={loading} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '0.7rem', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginTop: '0.5rem' }}>
+          {loading ? 'Creating Account...' : 'Register'}
         </button>
       </form>
-      <p>Already have an account? <Link to="/login">Login here</Link></p>
+
+      <p style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.9rem', color: '#64748b' }}>
+        Already have an account? <Link to="/login" style={{ color: '#0284c7' }}>Login here</Link>
+      </p>
     </div>
   );
 };

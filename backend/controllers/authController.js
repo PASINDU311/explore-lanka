@@ -1,67 +1,84 @@
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
-// JWT Token එකක් Generate කරන Helper Function එක
+// JWT Token එක Generate කරන Helper Function එක
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+  return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', { expiresIn: '30d' });
 };
 
-// @desc    Register a new User (Tourist or Driver)
-// @route   POST /api/v1/auth/register
+// 1. Register User
 const registerUser = async (req, res) => {
   try {
     const { name, email, password, role, driverDetails } = req.body;
 
-    // Email එක කලින් අරන් තියෙනවාද බලන්න
-    const userExists = await User.findOne({ email });
+    // Email එක Clean කිරීම (Simple letters & remove spaces)
+    const cleanEmail = email ? email.toLowerCase().trim() : '';
+
+    const userExists = await User.findOne({ email: cleanEmail });
     if (userExists) {
-      return res.status(400).json({ message: 'User with this email already exists' });
+      return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    // Password එක Encrypt (Hash) කිරීම
+    // Password Hash කිරීම
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // New User කෙනෙක් Save කිරීම
     const user = await User.create({
       name,
-      email,
+      email: cleanEmail,
       password: hashedPassword,
       role: role || 'tourist',
+      approvalStatus: role === 'driver' ? 'pending' : 'approved',
       driverDetails: role === 'driver' ? driverDetails : {}
     });
 
-    if (user) {
-      res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id)
-      });
-    }
+    res.status(201).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      approvalStatus: user.approvalStatus,
+      token: generateToken(user._id)
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Authenticate User & Get Token
-// @route   POST /api/v1/auth/login
+// 2. Login User
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // User ව Email එකෙන් සොයා ගැනීම
-    const user = await User.findOne({ email });
+    // Email එක Clean කිරීම
+    const cleanEmail = email ? email.toLowerCase().trim() : '';
 
-    // User ඉන්නවා නම්, Password එක Match වෙනවාදැයි පරීක්ෂා කිරීම
+    const user = await User.findOne({ email: cleanEmail });
+
+    // User කෙනෙක් සිටී නම් සහ Password එක හරිනම්
     if (user && (await bcrypt.compare(password, user.password))) {
+      
+      // 🛑 DRIVER APPROVAL CHECK
+      if (user.role === 'driver') {
+        if (user.approvalStatus === 'pending') {
+          return res.status(403).json({ 
+            message: 'Your account is pending Admin approval. Please wait for verification.' 
+          });
+        }
+        if (user.approvalStatus === 'rejected') {
+          return res.status(403).json({ 
+            message: 'Your driver application has been rejected by Admin.' 
+          });
+        }
+      }
+
       res.json({
         _id: user._id,
         name: user.name,
         email: user.email,
         role: user.role,
+        approvalStatus: user.approvalStatus,
         token: generateToken(user._id)
       });
     } else {
@@ -72,15 +89,28 @@ const loginUser = async (req, res) => {
   }
 };
 
-// @desc    Get Current User Profile
-// @route   GET /api/v1/auth/profile
+// 3. Get User Profile
 const getUserProfile = async (req, res) => {
-  const user = await User.findById(req.user._id);
-  if (user) {
-    res.json(user);
-  } else {
-    res.status(404).json({ message: 'User not found' });
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).json({ message: 'User not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
-module.exports = { registerUser, loginUser, getUserProfile };
+// 4. Get All Approved Drivers
+const getDrivers = async (req, res) => {
+  try {
+    const drivers = await User.find({ role: 'driver', approvalStatus: 'approved' }).select('-password');
+    res.json(drivers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { registerUser, loginUser, getUserProfile, getDrivers };

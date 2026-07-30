@@ -2,21 +2,32 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    lowercase: true, // 🟢 Email එක auto simple අකුරු කරයි
+    trim: true       // 🟢 වටේ තියෙන Spaces අයින් කරයි
+  },
   password: { type: String, required: true },
   role: { 
     type: String, 
     enum: ['tourist', 'driver', 'admin'], 
     default: 'tourist' 
   },
-  avatar: { type: String, default: '' },
-  
-  // Driver කෙනෙක් නම් පමණක් පිරවිය යුතු විස්තර
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: function() {
+      return this.role === 'driver' ? 'pending' : 'approved';
+    }
+  },
   driverDetails: {
-    vehicleType: { type: String, enum: ['TukTuk', 'Car', 'Van', 'None'], default: 'None' },
-    licenseNumber: { type: String, default: '' },
-    pricePerKm: { type: Number, default: 0 },
-    isVerified: { type: Boolean, default: false }
+    vehicleType: String,
+    vehicleNumber: String,
+    pricePerKm: Number,
+    licenseNumber: String,
+    bio: String
   }
 }, { timestamps: true });
 

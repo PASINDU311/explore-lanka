@@ -1,7 +1,6 @@
 const Booking = require('../models/Booking');
 
-// @desc    Create a Driver Booking Request (Tourist)
-// @route   POST /api/v1/bookings
+// 1. Create a new booking
 const createBooking = async (req, res) => {
   try {
     const { driverId, pickupLocation, travelDate, note } = req.body;
@@ -20,40 +19,29 @@ const createBooking = async (req, res) => {
   }
 };
 
-// @desc    Get Bookings for logged-in User (Tourist or Driver)
-// @route   GET /api/v1/bookings/my-bookings
+// 2. Get User/Driver Bookings
 const getMyBookings = async (req, res) => {
   try {
-    let query = {};
+    let bookings;
     if (req.user.role === 'driver') {
-      query = { driver: req.user._id };
+      bookings = await Booking.find({ driver: req.user._id }).populate('tourist', 'name email');
     } else {
-      query = { tourist: req.user._id };
+      bookings = await Booking.find({ tourist: req.user._id }).populate('driver', 'name email driverDetails');
     }
-
-    const bookings = await Booking.find(query)
-      .populate('tourist', 'name email')
-      .populate('driver', 'name driverDetails');
-
     res.json(bookings);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Update Booking Status (Driver Only: confirm, reject, complete)
-// @route   PATCH /api/v1/bookings/:id/status
+// 3. Update Booking Status (Accept / Reject)
 const updateBookingStatus = async (req, res) => {
   try {
-    const { status } = req.body; // 'confirmed', 'rejected', or 'completed'
-
+    const { status } = req.body;
     const booking = await Booking.findById(req.params.id);
 
-    if (!booking) return res.status(404).json({ message: 'Booking not found' });
-
-    // Request එක එව්වේ අදාළ Driver මදැයි බලමු
-    if (booking.driver.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized to update this booking' });
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
     }
 
     booking.status = status;
@@ -65,8 +53,19 @@ const updateBookingStatus = async (req, res) => {
   }
 };
 
-module.exports = {
-  createBooking,
-  getMyBookings,
-  updateBookingStatus
+// 4. Get ALL Bookings (Admin Only)
+const getAllBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find()
+      .populate('tourist', 'name email')
+      .populate('driver', 'name email driverDetails')
+      .sort({ createdAt: -1 });
+
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
+
+// ⚠️ Functions සියල්ල Export කර ඇද්දැයි තහවුරු කරගන්න
+module.exports = { createBooking, getMyBookings, updateBookingStatus, getAllBookings };

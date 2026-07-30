@@ -6,6 +6,7 @@ import Explore from './pages/Explore';
 import Planner from './pages/Planner';
 import Drivers from './pages/Drivers';
 import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard'; // Import එක තියෙනවාද බලන්න
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -19,6 +20,7 @@ function App() {
         <Route path="/planner" element={<Planner />} />
         <Route path="/drivers" element={<Drivers />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/admin" element={<AdminDashboard />} /> {/* Admin Route */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
       </Routes>
