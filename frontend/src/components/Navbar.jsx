@@ -211,31 +211,34 @@ const Navbar = () => {
           Home
         </Link>
 
-        {(!user || user.role === 'tourist') && (
+        {/* 🌐 Public Links (හැමෝටම පෙනෙන) */}
+        <Link to="/places" className="sl-nav-link" onClick={() => setMenuOpen(false)}>
+          📍 Destinations
+        </Link>
+        <Link to="/itinerary" className="sl-nav-link" onClick={() => setMenuOpen(false)}>
+          🤖 AI Itinerary
+        </Link>
+
+        {/* 🔒 Tourist කෙනෙක් Login වී සිටීනම් පමණක් "Find Drivers" සහ "My Bookings" පෙන්වයි */}
+        {user && user.role === 'tourist' && (
           <>
-            <Link to="/places" className="sl-nav-link" onClick={() => setMenuOpen(false)}>
-              📍 Destinations
-            </Link>
-            <Link to="/itinerary" className="sl-nav-link" onClick={() => setMenuOpen(false)}>
-              🤖 AI Itinerary
-            </Link>
             <Link to="/drivers" className="sl-nav-link" onClick={() => setMenuOpen(false)}>
               🛺 Find Drivers
             </Link>
-            {user && user.role === 'tourist' && (
-              <Link to="/my-bookings" className="sl-nav-link" onClick={() => setMenuOpen(false)}>
-                📅 My Bookings
-              </Link>
-            )}
+            <Link to="/my-bookings" className="sl-nav-link" onClick={() => setMenuOpen(false)}>
+              📅 My Bookings
+            </Link>
           </>
         )}
 
+        {/* Admin Link */}
         {user && user.role === 'admin' && (
           <Link to="/admin" className="sl-nav-link" onClick={() => setMenuOpen(false)}>
             ⚙️ Admin Panel
           </Link>
         )}
 
+        {/* Driver Link */}
         {user && user.role === 'driver' && (
           <Link to="/driver-dashboard" className="sl-nav-link" onClick={() => setMenuOpen(false)}>
             🛺 Driver Dashboard
