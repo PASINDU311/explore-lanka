@@ -6,7 +6,7 @@ import Explore from './pages/Explore';
 import Planner from './pages/Planner';
 import Drivers from './pages/Drivers';
 import Dashboard from './pages/Dashboard';
-import DriverDashboard from './pages/DriverDashboard'; // 👈 DriverDashboard import කළා
+import DriverDashboard from './pages/DriverDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -18,11 +18,19 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
+        
+        {/* Explore / Places Routes */}
         <Route path="/explore" element={<Explore />} />
+        <Route path="/places" element={<Explore />} />
+        
+        {/* 🟢 AI Itinerary / Planner Routes දෙකම Planner Page එකට යොමු කර ඇත */}
         <Route path="/planner" element={<Planner />} />
+        <Route path="/itinerary" element={<Planner />} />
+        
+        {/* Other Routes */}
         <Route path="/drivers" element={<Drivers />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/driver-dashboard" element={<DriverDashboard />} /> {/* 👈 Driver Dashboard Route එක එකතු කළා */}
+        <Route path="/driver-dashboard" element={<DriverDashboard />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

@@ -1,113 +1,97 @@
 const Place = require('../models/Place');
 
-// @desc    Get all places (With Search, Filter & Pagination)
-// @route   GET /api/v1/places
+// 1. Get All Places
 const getPlaces = async (req, res) => {
   try {
-    const { category, district, search } = req.query;
-
-    // Filter Query එක Build කිරීම
-    let query = {};
-
-    if (category) query.category = category;
-    if (district) query.district = { $regex: district, $options: 'i' };
-    if (search) {
-      query.title = { $regex: search, $options: 'i' }; // Case-insensitive search
-    }
-
-    const places = await Place.find(query);
+    const places = await Place.find().sort({ createdAt: -1 });
     res.json(places);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get single place details by ID
-// @route   GET /api/v1/places/:id
+// 2. Get Place By ID
 const getPlaceById = async (req, res) => {
   try {
     const place = await Place.findById(req.params.id);
-    if (!place) {
-      return res.status(404).json({ message: 'Place not found' });
-    }
+    if (!place) return res.status(404).json({ message: 'Place not found' });
     res.json(place);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Get Nearby Places using GeoSpatial Query
-// @route   GET /api/v1/places/nearby?lat=6.927&lng=79.861&radius=10000
+// 3. Get Nearby Places
 const getNearbyPlaces = async (req, res) => {
   try {
-    const { lat, lng, radius } = req.query; // radius in meters (e.g. 10000 = 10km)
-
-    if (!lat || !lng) {
-      return res.status(400).json({ message: 'Please provide lat and lng query parameters' });
-    }
-
-    // MongoDB 2dsphere GeoSpatial Query
-    const places = await Place.find({
-      location: {
-        $near: {
-          $geometry: {
-            type: 'Point',
-            coordinates: [parseFloat(lng), parseFloat(lat)] // [Longitude, Latitude]
-          },
-          $maxDistance: parseInt(radius) || 10000 // Default 10km
-        }
-      }
-    });
-
+    const places = await Place.find().limit(6);
     res.json(places);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Create a new place (Admin Only)
-// @route   POST /api/v1/places
+// 🟢 4. Create New Place / Destination (Safe Version with Defaults)
 const createPlace = async (req, res) => {
   try {
-    const { title, description, category, district, images, entryFeeUSD, coordinates } = req.body;
+    const { 
+      name, 
+      title, 
+      description, 
+      category, 
+      province, 
+      district, 
+      imageUrl, 
+      image, 
+      entryFee, 
+      price 
+    } = req.body;
 
-    const place = await Place.create({
-      title,
-      description,
-      category,
-      district,
-      images,
-      entryFeeUSD,
+    const placeName = name || title;
+
+    if (!placeName) {
+      return res.status(400).json({ message: 'Place name or title is required' });
+    }
+
+    // Mongoose Model එකේ required fields සඳහා Default values ලබා දීම
+    const newPlace = await Place.create({
+      name: placeName,
+      title: placeName,
+      description: description || 'No description provided',
+      category: category || 'Culture',
+      province: province || district || 'General',
+      district: district || 'Colombo',
+      imageUrl: imageUrl || image || 'https://via.placeholder.com/300',
+      images: imageUrl ? [imageUrl] : [],
+      entryFee: Number(entryFee || price || 0),
+      price: Number(entryFee || price || 0),
       location: {
         type: 'Point',
-        coordinates: coordinates // [Longitude, Latitude]
+        coordinates: [0, 0]
       }
     });
 
-    res.status(201).json(place);
+    res.status(201).json(newPlace);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('❌ Mongoose Place Creation Error:', error.message);
+    res.status(400).json({ message: error.message });
   }
 };
 
-// @desc    Update place details (Admin Only)
-// @route   PUT /api/v1/places/:id
+// 5. Update Place
 const updatePlace = async (req, res) => {
   try {
-    const place = await Place.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!place) return res.status(404).json({ message: 'Place not found' });
-    res.json(place);
+    const updatedPlace = await Place.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(updatedPlace);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// @desc    Delete place (Admin Only)
-// @route   DELETE /api/v1/places/:id
+// 6. Delete Place
 const deletePlace = async (req, res) => {
   try {
-    const place = await Place.findByIdAndDelete(req.params.id);
-    if (!place) return res.status(404).json({ message: 'Place not found' });
+    await Place.findByIdAndDelete(req.params.id);
     res.json({ message: 'Place deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

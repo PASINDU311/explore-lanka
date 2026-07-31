@@ -29,7 +29,7 @@ const AdminDashboard = () => {
       const driversRes = await API.get('/admin/drivers').catch(() => ({ data: [] }));
       setDrivers(driversRes.data);
 
-      // 2. Fetch Places (🟢 FIX: /destinations වෙනුවට /places ලෙස වෙනස් කරන ලදී)
+      // 2. Fetch Places
       const placesRes = await API.get('/places').catch(() => ({ data: [] }));
       setPlaces(placesRes.data);
 
@@ -75,19 +75,31 @@ const AdminDashboard = () => {
   const handlePlaceSubmit = async (e) => {
     e.preventDefault();
     try {
-      await API.post('/destinations', placeForm);
+      // 🟢 FIX: title එක Backend එක ඉල්ලන 'name' බවටත්, /places endpoint එකටත් යවන ලදී
+      const payload = {
+        name: placeForm.title, 
+        description: placeForm.description,
+        district: placeForm.district,
+        category: placeForm.category,
+        entryFee: Number(placeForm.entryFee),
+        imageUrl: placeForm.imageUrl
+      };
+
+      await API.post('/places', payload);
       alert('New Destination Added Successfully!');
       setPlaceForm({ title: '', description: '', district: '', category: 'Culture', entryFee: 0, imageUrl: '' });
       fetchAdminData();
     } catch (err) {
-      alert('Failed to add destination');
+      console.error('Error adding place:', err);
+      alert(err.response?.data?.message || 'Failed to add destination');
     }
   };
 
   const handleDeletePlace = async (id) => {
     if (window.confirm('Are you sure you want to delete this destination?')) {
       try {
-        await API.delete(`/destinations/${id}`);
+        // 🟢 FIX: /places Endpoint එක භාවිතා කර ඇත
+        await API.delete(`/places/${id}`);
         alert('Destination deleted');
         fetchAdminData();
       } catch (err) {
@@ -96,7 +108,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // 🟢 FIX: approvalStatus එකක් නැති අය සහ 'pending' අය දෙගොල්ලන්ම Pending Drivers ලැයිස්තුවට ගනියි
   const pendingDrivers = drivers.filter(d => !d.approvalStatus || d.approvalStatus === 'pending');
   const approvedDrivers = drivers.filter(d => d.approvalStatus === 'approved');
 
@@ -229,9 +240,9 @@ const AdminDashboard = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                 {places.map((p) => (
                   <div key={p._id} style={{ border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden', background: '#fff' }}>
-                    {p.imageUrl && <img src={p.imageUrl} alt={p.title} style={{ width: '100%', height: '150px', objectFit: 'cover' }} />}
+                    {p.imageUrl && <img src={p.imageUrl} alt={p.name || p.title} style={{ width: '100%', height: '150px', objectFit: 'cover' }} />}
                     <div style={{ padding: '1rem' }}>
-                      <h4 style={{ margin: 0 }}>{p.title}</h4>
+                      <h4 style={{ margin: 0 }}>{p.name || p.title}</h4>
                       <p style={{ margin: '0.3rem 0', fontSize: '0.85rem', color: '#64748b' }}>📍 {p.district} | 🏷️ {p.category}</p>
                       <button onClick={() => handleDeletePlace(p._id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '4px', width: '100%', marginTop: '0.5rem', cursor: 'pointer' }}>Delete Place</button>
                     </div>
@@ -253,10 +264,10 @@ const AdminDashboard = () => {
                     <div key={b._id} style={{ padding: '1.2rem', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <h4 style={{ margin: 0, color: '#0f172a' }}>👤 Tourist: {b.tourist?.name} ➡️ 👨‍✈️ Driver: {b.driver?.name}</h4>
-                        <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.9rem', color: '#475569' }}>📍 Pickup: {b.pickupLocation} | 📅 Date: {new Date(b.travelDate).toLocaleDateString()}</p>
+                        <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.9rem', color: '#475569' }}>📍 Pickup: {b.pickupLocation} | 📅 Date: {new Date(b.date || b.travelDate).toLocaleDateString()}</p>
                       </div>
-                      <span style={{ padding: '0.3rem 0.8rem', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.85rem', background: b.status === 'confirmed' ? '#dcfce7' : b.status === 'rejected' ? '#fee2e2' : '#fef3c7', color: b.status === 'confirmed' ? '#15803d' : b.status === 'rejected' ? '#b91c1c' : '#b45309' }}>
-                        {b.status.toUpperCase()}
+                      <span style={{ padding: '0.3rem 0.8rem', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.85rem', background: b.status === 'confirmed' || b.status === 'accepted' ? '#dcfce7' : b.status === 'rejected' ? '#fee2e2' : '#fef3c7', color: b.status === 'confirmed' || b.status === 'accepted' ? '#15803d' : b.status === 'rejected' ? '#b91c1c' : '#b45309' }}>
+                        {(b.status || 'PENDING').toUpperCase()}
                       </span>
                     </div>
                   ))}
