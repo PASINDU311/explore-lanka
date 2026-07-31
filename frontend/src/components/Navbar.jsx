@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 const Navbar = () => {
   const navigate = useNavigate();
 
-  // sessionStorage සහ localStorage දෙකෙන්ම User Data ඇත්දැයි ආරක්ෂිතව Check කිරීම
+  // User Data ආරක්ෂිතව ලබා ගැනීම
   const getUser = () => {
     try {
       const sessionUser = sessionStorage.getItem('user');
@@ -13,19 +13,18 @@ const Navbar = () => {
       const localUser = localStorage.getItem('user');
       if (localUser) return JSON.parse(localUser);
     } catch (e) {
-      console.error('Error parsing user data:', e);
+      console.error('Error reading user:', e);
     }
     return null;
   };
 
   const user = getUser();
 
-  // Logout Function එක
   const handleLogout = () => {
     sessionStorage.clear();
     localStorage.clear();
     navigate('/login');
-    window.location.reload(); // Navbar එක Refresh කිරීම සඳහා
+    window.location.reload();
   };
 
   return (
@@ -33,36 +32,64 @@ const Navbar = () => {
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center',
-      padding: '1rem 2rem',
+      padding: '0.9rem 2rem',
       background: '#0f172a',
       color: '#fff',
       borderBottom: '1px solid #1e293b'
     }}>
-      {/* 1. Logo */}
+      {/* 1. Left Side Logo */}
       <Link to="/" style={{ textDecoration: 'none', color: '#38bdf8', fontSize: '1.4rem', fontWeight: 'bold' }}>
         🌴 ExploreLanka
       </Link>
 
-      {/* 2. Navigation / Authentication Buttons */}
+      {/* 2. Middle Navigation Links (Role එක අනුව සකස් කර ඇත) */}
+      <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+        <Link to="/" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '0.95rem', fontWeight: '500' }}>
+          Home
+        </Link>
+
+        {/* 🟢 Guest (Log වී නැති අය) හෝ Tourist ලාට පමණක් පෙනෙන Links */}
+        {(!user || user.role === 'tourist') && (
+          <>
+            <Link to="/places" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '0.95rem', fontWeight: '500' }}>
+              📍 Destinations
+            </Link>
+            <Link to="/itinerary" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '0.95rem', fontWeight: '500' }}>
+              🤖 AI Itinerary
+            </Link>
+            <Link to="/drivers" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '0.95rem', fontWeight: '500' }}>
+              🛺 Find Drivers
+            </Link>
+            {user && user.role === 'tourist' && (
+              <Link to="/my-bookings" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '0.95rem', fontWeight: '500' }}>
+                📅 My Bookings
+              </Link>
+            )}
+          </>
+        )}
+
+        {/* 🟢 Admin කෙනෙක්ට පමණක් පෙනෙන Link */}
+        {user && user.role === 'admin' && (
+          <Link to="/admin" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '0.95rem', fontWeight: '500' }}>
+            ⚙️ Admin Panel
+          </Link>
+        )}
+
+        {/* 🟢 Driver කෙනෙක්ට පමණක් පෙනෙන Link */}
+        {user && user.role === 'driver' && (
+          <Link to="/driver-dashboard" style={{ color: '#cbd5e1', textDecoration: 'none', fontSize: '0.95rem', fontWeight: '500' }}>
+            🛺 Driver Dashboard
+          </Link>
+        )}
+      </div>
+
+      {/* 3. Right Side User Info & Logout Button */}
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
         {user ? (
-          /* Logged In වී සිටින විට පෙන්වන Buttons */
           <>
             <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
               👤 {user.name} ({user.role?.toUpperCase()})
             </span>
-
-            {user.role === 'admin' && (
-              <Link to="/admin" style={{ color: '#fff', textDecoration: 'none', padding: '0.4rem 0.8rem', background: '#0284c7', borderRadius: '5px', fontSize: '0.9rem' }}>
-                ⚙️ Admin Panel
-              </Link>
-            )}
-
-            {user.role === 'driver' && (
-              <Link to="/driver-dashboard" style={{ color: '#fff', textDecoration: 'none', padding: '0.4rem 0.8rem', background: '#16a34a', borderRadius: '5px', fontSize: '0.9rem' }}>
-                🛺 Driver Dashboard
-              </Link>
-            )}
 
             <button
               onClick={handleLogout}
@@ -74,41 +101,19 @@ const Navbar = () => {
                 borderRadius: '5px',
                 cursor: 'pointer',
                 fontWeight: 'bold',
-                fontSize: '0.9rem'
+                fontSize: '0.85rem'
               }}
             >
               Logout
             </button>
           </>
         ) : (
-          /* Logged In වී නැති විට (Guest) පෙන්වන Buttons */
+          /* Log වී නැති විට (Guest) */
           <>
-            <Link
-              to="/login"
-              style={{
-                color: '#fff',
-                textDecoration: 'none',
-                padding: '0.5rem 1rem',
-                border: '1px solid #38bdf8',
-                borderRadius: '5px',
-                fontSize: '0.9rem'
-              }}
-            >
+            <Link to="/login" style={{ color: '#fff', textDecoration: 'none', padding: '0.4rem 0.8rem', border: '1px solid #38bdf8', borderRadius: '5px', fontSize: '0.9rem' }}>
               Login
             </Link>
-
-            <Link
-              to="/register"
-              style={{
-                color: '#0f172a',
-                background: '#38bdf8',
-                textDecoration: 'none',
-                padding: '0.5rem 1rem',
-                borderRadius: '5px',
-                fontWeight: 'bold',
-                fontSize: '0.9rem'
-              }}
-            >
+            <Link to="/register" style={{ color: '#0f172a', background: '#38bdf8', textDecoration: 'none', padding: '0.4rem 0.8rem', borderRadius: '5px', fontWeight: 'bold', fontSize: '0.9rem' }}>
               Register
             </Link>
           </>

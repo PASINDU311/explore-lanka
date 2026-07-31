@@ -1,112 +1,149 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import API from '../services/api';
 
-const DriverDashboard = ({ user }) => {
+const DriverDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const fetchDriverBookings = async () => {
-    try {
-      setLoading(true);
-      const res = await API.get('/bookings/my-bookings');
-      setBookings(res.data);
-    } catch (err) {
-      console.error('Error loading driver bookings', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchDriverBookings();
   }, []);
 
-  const handleStatusUpdate = async (id, status) => {
+  // Driver ට ආපු Bookings ලබා ගැනීම
+  const fetchDriverBookings = async () => {
     try {
-      await API.patch(`/bookings/${id}/status`, { status });
-      alert(`Trip Request ${status.toUpperCase()}!`);
-      fetchDriverBookings();
+      setLoading(true);
+      const res = await API.get('/bookings/driver-bookings');
+      setBookings(res.data);
     } catch (err) {
-      alert('Failed to update status');
+      console.error('Error fetching driver bookings:', err);
+      setError('Failed to load booking requests.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const pendingCount = bookings.filter(b => b.status === 'pending').length;
-  const confirmedCount = bookings.filter(b => b.status === 'confirmed').length;
+  // Status එක Update කිරීම (Accept / Reject)
+  const handleStatusChange = async (bookingId, newStatus) => {
+    try {
+      await API.patch(`/bookings/${bookingId}/status`, { status: newStatus });
+      alert(`Booking request ${newStatus === 'accepted' ? 'ACCEPTED ✅' : 'REJECTED ❌'} successfully!`);
+      // Update වූ පසු List එක නැවත Refresh කිරීම
+      fetchDriverBookings();
+    } catch (err) {
+      console.error('Error updating status:', err);
+      alert(err.response?.data?.message || 'Failed to update booking status.');
+    }
+  };
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '3rem', color: '#fff' }}>Loading ride requests...</div>;
+  }
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '2rem auto', padding: '1rem', fontFamily: 'sans-serif' }}>
-      
-      {/* Driver Stats & Profile Header */}
-      <div style={{ background: '#0f172a', color: '#fff', padding: '2rem', borderRadius: '12px', marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{ margin: 0, color: '#38bdf8', fontSize: '1.8rem' }}>👨‍✈️ Driver Portal: {user.name}</h1>
-            <p style={{ margin: '0.4rem 0 0 0', color: '#94a3b8' }}>Vehicle: <strong>{user.driverDetails?.vehicleType || 'Taxi / TukTuk'}</strong> | License: <strong>{user.driverDetails?.licenseNumber || 'Verified'}</strong></p>
-          </div>
-          <div style={{ background: '#0284c7', padding: '0.6rem 1.2rem', borderRadius: '8px', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.8rem', textTransform: 'uppercase' }}>Rate per KM</span>
-            <h3 style={{ margin: 0 }}>LKR {user.driverDetails?.pricePerKm || 0}</h3>
-          </div>
-        </div>
+    <div style={{ maxWidth: '900px', margin: '2rem auto', padding: '1rem', color: '#333' }}>
+      <h2 style={{ color: '#0f172a', marginBottom: '1.5rem', textAlign: 'center' }}>
+        🛺 Driver Dashboard - Ride Requests
+      </h2>
 
-        {/* Quick Stats */}
-        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem' }}>
-          <div style={{ background: '#1e293b', padding: '1rem', borderRadius: '8px', minWidth: '150px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Pending Requests</span>
-            <h2 style={{ margin: '0.2rem 0 0 0', color: '#f59e0b' }}>{pendingCount}</h2>
-          </div>
-          <div style={{ background: '#1e293b', padding: '1rem', borderRadius: '8px', minWidth: '150px' }}>
-            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Confirmed Trips</span>
-            <h2 style={{ margin: '0.2rem 0 0 0', color: '#10b981' }}>{confirmedCount}</h2>
-          </div>
-        </div>
-      </div>
-
-      {/* Bookings List */}
-      <h3>🛺 Incoming Passenger Hire Requests</h3>
-      
-      {loading ? (
-        <p>Loading hire requests...</p>
-      ) : bookings.length === 0 ? (
-        <div style={{ padding: '3rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-          <p style={{ color: '#64748b', margin: 0 }}>No hire requests received yet. Stay active!</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-          {bookings.map((b) => (
-            <div key={b._id} style={{ padding: '1.2rem', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-              <div>
-                <h4 style={{ margin: 0, color: '#0f172a', fontSize: '1.1rem' }}>👤 Tourist Name: {b.tourist?.name || 'Passenger'}</h4>
-                <p style={{ margin: '0.4rem 0 0.2rem 0', color: '#334155' }}>📍 <strong>Pickup Location:</strong> {b.pickupLocation}</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>📅 <strong>Travel Date:</strong> {new Date(b.travelDate).toLocaleDateString()} | ✉️ Contact Email: {b.tourist?.email}</p>
-                {b.note && <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.85rem', color: '#0284c7', background: '#f0f9ff', padding: '0.4rem', borderRadius: '4px' }}>Note: "{b.note}"</p>}
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.6rem' }}>
-                <span style={{ 
-                  padding: '0.3rem 0.8rem', 
-                  borderRadius: '20px', 
-                  fontWeight: 'bold', 
-                  fontSize: '0.85rem', 
-                  background: b.status === 'confirmed' ? '#dcfce7' : b.status === 'rejected' ? '#fee2e2' : '#fef3c7', 
-                  color: b.status === 'confirmed' ? '#15803d' : b.status === 'rejected' ? '#b91c1c' : '#b45309' 
-                }}>
-                  {b.status.toUpperCase()}
-                </span>
-
-                {b.status === 'pending' && (
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button onClick={() => handleStatusUpdate(b._id, 'confirmed')} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Accept Hire</button>
-                    <button onClick={() => handleStatusUpdate(b._id, 'rejected')} style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>Reject</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+      {error && (
+        <div style={{ background: '#fee2e2', color: '#dc2626', padding: '0.8rem', borderRadius: '6px', marginBottom: '1rem' }}>
+          {error}
         </div>
       )}
 
+      {bookings.length === 0 ? (
+        <div style={{ background: '#f8fafc', padding: '2rem', borderRadius: '8px', textAlign: 'center', border: '1px dashed #cbd5e1' }}>
+          <p style={{ color: '#64748b', margin: 0 }}>No booking requests received yet!</p>
+        </div>
+      ) : (
+        bookings.map((booking) => (
+          <div key={booking._id} style={{
+            background: '#fff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '10px',
+            padding: '1.2rem',
+            marginBottom: '1rem',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#0284c7', fontSize: '1.1rem' }}>
+                  👤 Tourist: {booking.tourist?.name || 'Tourist'}
+                </h3>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                  📧 {booking.tourist?.email}
+                </span>
+              </div>
+
+              {/* Status Badge */}
+              <span style={{
+                padding: '0.35rem 0.8rem',
+                borderRadius: '20px',
+                fontSize: '0.8rem',
+                fontWeight: 'bold',
+                color: '#fff',
+                background: booking.status === 'accepted' ? '#16a34a' : booking.status === 'rejected' ? '#dc2626' : '#d97706'
+              }}>
+                {booking.status.toUpperCase()}
+              </span>
+            </div>
+
+            <hr style={{ border: 'none', borderBottom: '1px solid #f1f5f9', margin: '0.8rem 0' }} />
+
+            {/* Request Details */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.95rem', marginBottom: '1rem' }}>
+              <p style={{ margin: '0.2rem 0' }}>📍 <strong>Pickup:</strong> {booking.pickupLocation}</p>
+              <p style={{ margin: '0.2rem 0' }}>🏁 <strong>Destination:</strong> {booking.destination}</p>
+              <p style={{ margin: '0.2rem 0' }}>📅 <strong>Date:</strong> {new Date(booking.date).toLocaleDateString()}</p>
+              {booking.totalPrice && <p style={{ margin: '0.2rem 0' }}>💰 <strong>Price:</strong> LKR {booking.totalPrice}</p>}
+            </div>
+
+            {/* Accept / Reject Action Buttons */}
+            {booking.status === 'pending' ? (
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button
+                  onClick={() => handleStatusChange(booking._id, 'accepted')}
+                  style={{
+                    flex: 1,
+                    background: '#16a34a',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '0.6rem',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  ✅ Accept Request
+                </button>
+                <button
+                  onClick={() => handleStatusChange(booking._id, 'rejected')}
+                  style={{
+                    flex: 1,
+                    background: '#dc2626',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '0.6rem',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontWeight: 'bold',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  ❌ Reject Request
+                </button>
+              </div>
+            ) : (
+              <p style={{ fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic', margin: 0, textAlign: 'right' }}>
+                Status: Marked as {booking.status}
+              </p>
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 };

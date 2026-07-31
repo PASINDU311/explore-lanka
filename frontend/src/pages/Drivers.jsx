@@ -4,7 +4,12 @@ import API from '../services/api';
 const Drivers = () => {
   const [drivers, setDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState(null);
-  const [bookingData, setBookingData] = useState({ pickupLocation: '', travelDate: '', note: '' });
+  const [bookingData, setBookingData] = useState({ 
+    pickupLocation: '', 
+    destination: '', 
+    date: '', 
+    note: '' 
+  });
 
   useEffect(() => {
     API.get('/auth/drivers')
@@ -17,10 +22,15 @@ const Drivers = () => {
     try {
       await API.post('/bookings', {
         driverId: selectedDriver._id,
-        ...bookingData
+        pickupLocation: bookingData.pickupLocation,
+        destination: bookingData.destination, // Backend එකට Destination යැවීම
+        date: bookingData.date,                // Backend එකට Date යැවීම
+        note: bookingData.note
       });
-      alert('Booking Request Sent to Driver Successfully! Check your Dashboard for updates.');
+
+      alert('Booking Request Sent to Driver Successfully! Check your My Bookings page for updates.');
       setSelectedDriver(null);
+      setBookingData({ pickupLocation: '', destination: '', date: '', note: '' });
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to send booking request');
     }
@@ -57,25 +67,47 @@ const Drivers = () => {
           <div style={{ background: '#fff', padding: '2rem', borderRadius: '10px', width: '400px' }}>
             <h3>Book {selectedDriver.name}</h3>
             <form onSubmit={handleBookingSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+              
+              {/* Pickup Location */}
               <input 
                 type="text" 
                 placeholder="Pickup Location (e.g. CMB Airport)" 
                 required 
+                value={bookingData.pickupLocation}
                 onChange={(e) => setBookingData({ ...bookingData, pickupLocation: e.target.value })} 
               />
+
+              {/* 🟢 Destination input එක එකතු කරන ලදී */}
+              <input 
+                type="text" 
+                placeholder="Destination (e.g. Kandy / Ella)" 
+                required 
+                value={bookingData.destination}
+                onChange={(e) => setBookingData({ ...bookingData, destination: e.target.value })} 
+              />
+
+              {/* 🟢 travelDate වෙනුවට date ලෙස සකසන ලදී */}
               <input 
                 type="date" 
                 required 
-                onChange={(e) => setBookingData({ ...bookingData, travelDate: e.target.value })} 
+                value={bookingData.date}
+                onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })} 
               />
+
+              {/* Additional Note */}
               <textarea 
                 placeholder="Additional details/notes..." 
+                value={bookingData.note}
                 onChange={(e) => setBookingData({ ...bookingData, note: e.target.value })} 
               />
 
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="submit" style={{ flex: 1, background: '#16a34a', color: '#fff', border: 'none', padding: '0.6rem', borderRadius: '5px' }}>Confirm Request</button>
-                <button type="button" onClick={() => setSelectedDriver(null)} style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '0.6rem', borderRadius: '5px' }}>Cancel</button>
+                <button type="submit" style={{ flex: 1, background: '#16a34a', color: '#fff', border: 'none', padding: '0.6rem', borderRadius: '5px', cursor: 'pointer' }}>
+                  Confirm Request
+                </button>
+                <button type="button" onClick={() => setSelectedDriver(null)} style={{ background: '#dc2626', color: '#fff', border: 'none', padding: '0.6rem', borderRadius: '5px', cursor: 'pointer' }}>
+                  Cancel
+                </button>
               </div>
             </form>
           </div>
