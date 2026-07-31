@@ -12,28 +12,44 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import MyBookings from './pages/MyBookings';
 
+// User Session / LocalStorage Read Helper
+const getUser = () => {
+  try {
+    const sessionUser = sessionStorage.getItem('user');
+    if (sessionUser) return JSON.parse(sessionUser);
+
+    const localUser = localStorage.getItem('user');
+    if (localUser) return JSON.parse(localUser);
+  } catch (e) {
+    console.error('Error reading user:', e);
+  }
+  return null;
+};
+
 // 🔒 Protected Route for Tourist Only
 const ProtectedTouristRoute = ({ children }) => {
-  const getUser = () => {
-    try {
-      const sessionUser = sessionStorage.getItem('user');
-      if (sessionUser) return JSON.parse(sessionUser);
-
-      const localUser = localStorage.getItem('user');
-      if (localUser) return JSON.parse(localUser);
-    } catch (e) {
-      console.error('Error reading user:', e);
-    }
-    return null;
-  };
-
   const user = getUser();
-
-  // Tourist කෙනෙක් නෙමෙයි නම් Login එකට Redirect කරයි
   if (!user || user.role !== 'tourist') {
     return <Navigate to="/login" replace />;
   }
+  return children;
+};
 
+// 🔒 Protected Route for Driver Only
+const ProtectedDriverRoute = ({ children }) => {
+  const user = getUser();
+  if (!user || user.role !== 'driver') {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+};
+
+// 🔒 Protected Route for Admin Only
+const ProtectedAdminRoute = ({ children }) => {
+  const user = getUser();
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/login" replace />;
+  }
   return children;
 };
 
@@ -42,17 +58,20 @@ function App() {
     <Router>
       <Navbar />
       <Routes>
+        {/* Public Routes */}
         <Route path="/" element={<Home />} />
         
-        {/* Explore / Places Routes */}
+        {/* Explore / Places / Destinations Routes */}
         <Route path="/explore" element={<Explore />} />
         <Route path="/places" element={<Explore />} />
+        <Route path="/destinations" element={<Explore />} />
         
         {/* AI Itinerary / Planner Routes */}
         <Route path="/planner" element={<Planner />} />
         <Route path="/itinerary" element={<Planner />} />
+        <Route path="/ai-itinerary" element={<Planner />} />
         
-        {/* 🔒 Tourist ට විතරක් Access කරන්න පුළුවන් ආරක්ෂිත Routes */}
+        {/* 🔒 Tourist Protected Routes */}
         <Route 
           path="/drivers" 
           element={
@@ -70,12 +89,57 @@ function App() {
           } 
         />
 
-        {/* Other Routes */}
+        {/* 🔒 Driver Protected Routes */}
+        <Route 
+          path="/driver-dashboard" 
+          element={
+            <ProtectedDriverRoute>
+              <DriverDashboard />
+            </ProtectedDriverRoute>
+          } 
+        />
+
+        {/* 🔒 Admin Protected Routes (All Admin Sub-paths point to AdminDashboard) */}
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboard />
+            </ProtectedAdminRoute>
+          } 
+        />
+        <Route 
+          path="/admin-dashboard" 
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboard />
+            </ProtectedAdminRoute>
+          } 
+        />
+        <Route 
+          path="/admin/manage-users" 
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboard />
+            </ProtectedAdminRoute>
+          } 
+        />
+        <Route 
+          path="/admin/manage-drivers" 
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboard />
+            </ProtectedAdminRoute>
+          } 
+        />
+
+        {/* Auth & Other Routes */}
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/driver-dashboard" element={<DriverDashboard />} />
-        <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* Catch-all Fallback Route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
