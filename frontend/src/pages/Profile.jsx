@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import API from '../services/api'; // ඔබගේ API service file එක
+import API from '../services/api';
 
 const Profile = () => {
   const navigate = useNavigate();
 
-  // Storage එකෙන් පරිශීලක තොරතුරු ලබා ගැනීම
   const getUser = () => {
     try {
       const sessionUser = sessionStorage.getItem('user');
@@ -21,11 +20,9 @@ const Profile = () => {
 
   const currentUser = getUser();
 
-  // Edit Mode Toggle කිරීමේ State එක
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Form එක සඳහා State
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -34,10 +31,8 @@ const Profile = () => {
     gender: 'Other'
   });
 
-  // Page එක Load වෙද්දී දැනට තියෙන User Details Form එකට Fill කිරීම
   useEffect(() => {
     if (currentUser) {
-      // Name එක කැබලි දෙකකට වෙන් කර ගැනීම (ඇත්නම්)
       const nameParts = (currentUser.name || '').split(' ');
       const first = currentUser.firstName || nameParts[0] || '';
       const last = currentUser.lastName || nameParts.slice(1).join(' ') || '';
@@ -60,7 +55,6 @@ const Profile = () => {
     }));
   };
 
-  // Profile Data Save/Update කිරීම
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -76,12 +70,10 @@ const Profile = () => {
         gender: formData.gender
       };
 
-      // 1. Backend API Call එක (ඔබගේ Endpoint එක අනුව අවශ්‍ය නම් වෙනස් කරන්න)
       const res = await API.put('/auth/profile', updatedData);
 
-      // 2. Storage එකේ ඇති User Object එක Update කිරීම
       const newUserData = { ...currentUser, ...updatedData, ...(res.data?.user || {}) };
-      
+
       if (sessionStorage.getItem('user')) {
         sessionStorage.setItem('user', JSON.stringify(newUserData));
       }
@@ -91,10 +83,10 @@ const Profile = () => {
 
       alert('Profile details updated successfully!');
       setIsEditing(false);
-      window.location.reload(); // Navbar එකේ නම Update වීම සඳහා
+      window.location.reload();
     } catch (err) {
       console.error('Update error:', err);
-      alert(err.response?.data?.message || 'Failed to update profile. Please try again.');
+      alert(err.response?.data?.message || 'Failed to update profile.');
     } finally {
       setLoading(false);
     }
@@ -145,7 +137,6 @@ const Profile = () => {
           background: #0F2E2B;
           padding: 2.5rem 2rem 1.5rem;
           text-align: center;
-          position: relative;
         }
 
         .profile-avatar {
@@ -241,7 +232,7 @@ const Profile = () => {
         .profile-actions {
           display: flex;
           gap: 1rem;
-          margin-top: 1.5rem;
+          margin-top: 1rem;
         }
 
         .btn-edit {
@@ -254,11 +245,6 @@ const Profile = () => {
           font-weight: 700;
           font-size: 0.95rem;
           cursor: pointer;
-          transition: filter 0.2s;
-        }
-
-        .btn-edit:hover {
-          filter: brightness(1.05);
         }
 
         .btn-save {
@@ -285,8 +271,39 @@ const Profile = () => {
           cursor: pointer;
         }
 
+        /* 📋 MY BOOKINGS BUTTON STYLING */
+        .navigation-section {
+          margin-top: 1.5rem;
+          padding-top: 1.2rem;
+          border-top: 1px dashed #e2e8f0;
+          display: flex;
+          flex-direction: column;
+          gap: 0.8rem;
+        }
+
+        .btn-my-bookings {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          width: 100%;
+          background: #0F2E2B;
+          color: #F5EFE1;
+          padding: 0.8rem;
+          border-radius: 10px;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 0.95rem;
+          box-shadow: 0 4px 10px rgba(15, 46, 43, 0.15);
+          transition: all 0.2s ease;
+        }
+
+        .btn-my-bookings:hover {
+          background: #17423e;
+          color: #D9A441;
+        }
+
         .btn-logout-profile {
-          margin-top: 1rem;
           width: 100%;
           background: rgba(224, 103, 43, 0.1);
           color: #E0672B;
@@ -296,7 +313,9 @@ const Profile = () => {
           cursor: pointer;
           font-weight: 600;
           font-size: 0.9rem;
+          transition: all 0.2s;
         }
+
         .btn-logout-profile:hover {
           background: #E0672B;
           color: #ffffff;
@@ -317,7 +336,7 @@ const Profile = () => {
           <span className="profile-role-badge">🏝️ {currentUser.role || 'Tourist'}</span>
         </div>
 
-        {/* Body & Form Section */}
+        {/* Body Section */}
         <div className="profile-body">
           <form onSubmit={handleSubmit} className="profile-form">
             <div className="form-row">
@@ -391,7 +410,7 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Actions Buttons */}
+            {/* Profile Edit / Save Actions */}
             <div className="profile-actions">
               {!isEditing ? (
                 <button
@@ -418,9 +437,16 @@ const Profile = () => {
             </div>
           </form>
 
-          <button onClick={handleLogout} className="btn-logout-profile">
-            Logout
-          </button>
+          {/* 🔗 MY BOOKINGS NAV & LOGOUT SECTION */}
+          <div className="navigation-section">
+            <Link to="/my-bookings" className="btn-my-bookings">
+              📋 View My Bookings
+            </Link>
+
+            <button onClick={handleLogout} className="btn-logout-profile">
+              Logout
+            </button>
+          </div>
         </div>
       </div>
     </div>

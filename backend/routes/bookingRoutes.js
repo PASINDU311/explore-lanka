@@ -5,15 +5,20 @@ const {
   getMyBookings, 
   getDriverBookings,
   updateBookingStatus, 
-  getAllBookings 
+  getAllBookings,
+  getMessages, 
+  sendMessage
 } = require('../controllers/bookingController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 router.post('/', protect, createBooking);
 router.get('/my-bookings', protect, getMyBookings);
-router.get('/driver-bookings', protect, getDriverBookings); // 👈 Driver ගේ requests සඳහා
-router.patch('/:id/status', protect, updateBookingStatus); // 👈 Approve/Reject සඳහා
+router.get('/driver-bookings', protect, getDriverBookings); 
+router.patch('/:id/status', protect, updateBookingStatus); 
 
+// 🟢 Chat / Messages සඳහා නව Routes දෙක
+router.get('/:id/messages', getMessages);
+router.post('/:id/messages', sendMessage);
 // Admin Only Route
 router.get('/all', protect, authorize('admin'), getAllBookings);
 

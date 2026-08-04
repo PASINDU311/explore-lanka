@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import API from '../services/api';
 
 const DriverHatIcon = () => (
@@ -25,14 +25,58 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
+const MessageIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const SendIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </svg>
+);
+
+const CloseIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
 const MyBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // 🟢 CHAT STATES
+  const [activeChatBooking, setActiveChatBooking] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const chatEndRef = useRef(null);
+
   useEffect(() => {
     fetchMyBookings();
   }, []);
+
+  useEffect(() => {
+    // Auto-scroll chat to bottom when messages update
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Active Chat එක විවෘත වූ විට Backend එකෙන් Messages ගෙන ඒම සහ තත්පර 3කට වරක් Sync (Polling) කිරීම
+  useEffect(() => {
+    let interval;
+    if (activeChatBooking) {
+      fetchMessages(activeChatBooking._id);
+
+      interval = setInterval(() => {
+        fetchMessages(activeChatBooking._id);
+      }, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [activeChatBooking]);
 
   const fetchMyBookings = async () => {
     try {
@@ -47,7 +91,16 @@ const MyBookings = () => {
     }
   };
 
-  // Status අනුව Style සහ Badge Labels සැකසීම
+  // 🟢 BACKEND එකෙන් MESSAGES GET කිරීම
+  const fetchMessages = async (bookingId) => {
+    try {
+      const res = await API.get(`/bookings/${bookingId}/messages`);
+      setMessages(res.data);
+    } catch (err) {
+      console.error('Error fetching chat messages:', err);
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status?.toLowerCase()) {
       case 'accepted':
@@ -76,6 +129,31 @@ const MyBookings = () => {
     }
   };
 
+  // 🟢 CHAT MODAL OPEN FUNCTION
+  const handleOpenChat = (booking) => {
+    setActiveChatBooking(booking);
+    setMessages([]); // Clear previous active messages until fetch completes
+  };
+
+  // 🟢 BACKEND එකට MESSAGE SEND කිරීම (sender: 'tourist')
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !activeChatBooking) return;
+
+    try {
+      const res = await API.post(`/bookings/${activeChatBooking._id}/messages`, {
+        sender: 'tourist',
+        text: newMessage
+      });
+
+      setMessages((prev) => [...prev, res.data]);
+      setNewMessage('');
+    } catch (err) {
+      console.error('Error sending message:', err);
+      alert('Failed to send message. Please try again.');
+    }
+  };
+
   return (
     <div className="mb-page">
       <style>{`
@@ -98,7 +176,6 @@ const MyBookings = () => {
           padding-bottom: 5rem;
         }
 
-        /* ---------- HERO ---------- */
         .mb-hero {
           position: relative;
           padding: 4rem 1.5rem 5.5rem;
@@ -149,14 +226,12 @@ const MyBookings = () => {
           display: block;
         }
 
-        /* ---------- MAIN CONTAINER ---------- */
         .mb-container {
           max-width: 820px;
           margin: 0 auto;
           padding: 0 1.5rem;
         }
 
-        /* ---------- ERROR / LOADING ---------- */
         .mb-status-box {
           text-align: center;
           padding: 3rem 1.5rem;
@@ -176,7 +251,6 @@ const MyBookings = () => {
           text-align: center;
         }
 
-        /* ---------- TICKET CARD ---------- */
         .mb-card-list {
           display: flex;
           flex-direction: column;
@@ -196,7 +270,6 @@ const MyBookings = () => {
           border-color: rgba(217, 164, 65, 0.4);
         }
 
-        /* Header Portion */
         .mb-ticket-head {
           display: flex;
           justify-content: space-between;
@@ -220,6 +293,12 @@ const MyBookings = () => {
           display: flex;
           align-items: center;
           justify-content: center;
+          flex-shrink: 0;
+        }
+        .mb-driver-name-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
         .mb-driver-title {
           font-family: 'Fraunces', serif;
@@ -228,12 +307,34 @@ const MyBookings = () => {
           color: var(--paper);
           margin: 0;
         }
+
+        .mb-msg-btn {
+          background: rgba(217, 164, 65, 0.15);
+          border: 1px solid var(--gold);
+          color: var(--gold);
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          padding: 0;
+        }
+        .mb-msg-btn:hover {
+          background: var(--gold);
+          color: var(--ink);
+          transform: scale(1.08);
+        }
+
         .mb-driver-sub {
           font-family: 'IBM Plex Mono', monospace;
           font-size: 0.7rem;
           color: var(--sage);
           text-transform: uppercase;
           letter-spacing: 0.08em;
+          display: block;
         }
 
         .mb-badge {
@@ -246,7 +347,6 @@ const MyBookings = () => {
           border: 1px solid transparent;
         }
 
-        /* Body Portion */
         .mb-ticket-body {
           padding: 1.4rem 1.5rem;
           display: flex;
@@ -254,7 +354,6 @@ const MyBookings = () => {
           gap: 1.2rem;
         }
 
-        /* Route Display */
         .mb-route {
           display: flex;
           align-items: center;
@@ -264,9 +363,7 @@ const MyBookings = () => {
           padding: 0.9rem 1.2rem;
           border-radius: 12px;
         }
-        .mb-route-point {
-          flex: 1;
-        }
+        .mb-route-point { flex: 1; }
         .mb-route-label {
           display: block;
           font-family: 'IBM Plex Mono', monospace;
@@ -289,23 +386,14 @@ const MyBookings = () => {
           align-items: center;
         }
 
-        /* Details Footer Grid */
         .mb-meta-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
           gap: 1rem;
           padding-top: 0.4rem;
         }
-        .mb-meta-item {
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-        }
-        .mb-meta-icon {
-          color: var(--gold);
-          display: flex;
-          align-items: center;
-        }
+        .mb-meta-item { display: flex; align-items: center; gap: 0.6rem; }
+        .mb-meta-icon { color: var(--gold); display: flex; align-items: center; }
         .mb-meta-label {
           display: block;
           font-family: 'IBM Plex Mono', monospace;
@@ -314,10 +402,156 @@ const MyBookings = () => {
           letter-spacing: 0.08em;
           color: var(--sage);
         }
-        .mb-meta-val {
-          font-size: 0.9rem;
-          font-weight: 500;
+        .mb-meta-val { font-size: 0.9rem; font-weight: 500; color: var(--paper); }
+
+        /* 🟢 CHAT MODAL STYLES */
+        .chat-overlay {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          background: rgba(15, 46, 43, 0.85);
+          backdrop-filter: blur(6px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 1rem;
+        }
+
+        .chat-modal {
+          background: var(--panel);
+          border: 1px solid var(--panel-edge);
+          border-radius: 20px;
+          width: 100%;
+          max-width: 520px;
+          height: 600px;
+          max-height: 90vh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+        }
+
+        .chat-header {
+          padding: 1.2rem 1.5rem;
+          background: #0F2E2B;
+          border-bottom: 1px solid var(--panel-edge);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .chat-driver-title {
+          font-family: 'Fraunces', serif;
+          font-size: 1.2rem;
+          font-weight: 600;
           color: var(--paper);
+          margin: 0;
+        }
+
+        .chat-route-sub {
+          font-size: 0.78rem;
+          color: var(--sage);
+          margin-top: 0.2rem;
+        }
+
+        .chat-close-btn {
+          background: transparent;
+          border: none;
+          color: var(--sage);
+          cursor: pointer;
+          padding: 0.3rem;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s;
+        }
+        .chat-close-btn:hover {
+          background: rgba(255,255,255,0.1);
+          color: var(--paper);
+        }
+
+        .chat-body {
+          flex: 1;
+          padding: 1.2rem 1.5rem;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          background: rgba(15, 46, 43, 0.3);
+        }
+
+        .chat-bubble {
+          max-width: 80%;
+          padding: 0.8rem 1.1rem;
+          border-radius: 14px;
+          font-size: 0.92rem;
+          line-height: 1.45;
+          position: relative;
+        }
+
+        .chat-bubble.driver {
+          align-self: flex-start;
+          background: rgba(35, 78, 72, 0.8);
+          color: var(--paper);
+          border-bottom-left-radius: 2px;
+          border: 1px solid var(--panel-edge);
+        }
+
+        .chat-bubble.tourist, .chat-bubble.user {
+          align-self: flex-end;
+          background: var(--gold);
+          color: #0F2E2B;
+          border-bottom-right-radius: 2px;
+          font-weight: 500;
+        }
+
+        .chat-time {
+          display: block;
+          font-size: 0.65rem;
+          margin-top: 0.3rem;
+          opacity: 0.75;
+          text-align: right;
+        }
+
+        .chat-footer {
+          padding: 1rem 1.2rem;
+          background: #0F2E2B;
+          border-top: 1px solid var(--panel-edge);
+          display: flex;
+          gap: 0.8rem;
+          align-items: center;
+        }
+
+        .chat-input {
+          flex: 1;
+          background: rgba(22, 60, 55, 0.8);
+          border: 1px solid var(--panel-edge);
+          border-radius: 25px;
+          padding: 0.75rem 1.2rem;
+          color: var(--paper);
+          font-size: 0.92rem;
+          outline: none;
+        }
+        .chat-input:focus {
+          border-color: var(--gold);
+        }
+
+        .chat-send-btn {
+          background: var(--gold);
+          color: #0F2E2B;
+          border: none;
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: transform 0.2s;
+        }
+        .chat-send-btn:hover {
+          transform: scale(1.05);
         }
 
         @media (max-width: 580px) {
@@ -362,6 +596,8 @@ const MyBookings = () => {
           <div className="mb-card-list">
             {bookings.map((booking) => {
               const statusInfo = getStatusBadge(booking.status);
+              const driverName = booking.driver?.name || 'Assigned Driver';
+
               return (
                 <div key={booking._id} className="mb-ticket">
                   {/* TICKET HEADER */}
@@ -371,7 +607,16 @@ const MyBookings = () => {
                         <DriverHatIcon />
                       </div>
                       <div>
-                        <h3 className="mb-driver-title">{booking.driver?.name || 'Assigned Driver'}</h3>
+                        <div className="mb-driver-name-wrapper">
+                          <h3 className="mb-driver-title">{driverName}</h3>
+                          <button 
+                            className="mb-msg-btn"
+                            title={`Chat with ${driverName}`}
+                            onClick={() => handleOpenChat(booking)}
+                          >
+                            <MessageIcon />
+                          </button>
+                        </div>
                         <span className="mb-driver-sub">Private Chauffeur</span>
                       </div>
                     </div>
@@ -390,7 +635,6 @@ const MyBookings = () => {
 
                   {/* TICKET BODY */}
                   <div className="mb-ticket-body">
-                    {/* Route Visualizer */}
                     <div className="mb-route">
                       <div className="mb-route-point">
                         <span className="mb-route-label">Pickup Location</span>
@@ -407,7 +651,6 @@ const MyBookings = () => {
                       </div>
                     </div>
 
-                    {/* Metadata (Date & Price) */}
                     <div className="mb-meta-grid">
                       <div className="mb-meta-item">
                         <div className="mb-meta-icon"><CalendarIcon /></div>
@@ -436,6 +679,67 @@ const MyBookings = () => {
           </div>
         )}
       </div>
+
+      {/* 🟢 CHAT MODAL INTERFACE */}
+      {activeChatBooking && (
+        <div className="chat-overlay" onClick={() => setActiveChatBooking(null)}>
+          <div className="chat-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="chat-header">
+              <div>
+                <h3 className="chat-driver-title">
+                  💬 {activeChatBooking.driver?.name || 'Driver'}
+                </h3>
+                <div className="chat-route-sub">
+                  Trip: <strong>{activeChatBooking.pickupLocation}</strong> ➔ <strong>{activeChatBooking.destination}</strong>
+                </div>
+              </div>
+              <button 
+                className="chat-close-btn" 
+                onClick={() => setActiveChatBooking(null)}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+
+            {/* Message Body */}
+            <div className="chat-body">
+              {messages.length === 0 ? (
+                <p style={{ textAlign: 'center', color: 'var(--sage)', fontSize: '0.85rem' }}>
+                  No messages yet. Send a message to start chatting!
+                </p>
+              ) : (
+                messages.map((msg, index) => {
+                  const senderType = typeof msg.sender === 'object' ? (msg.sender.role || 'tourist') : msg.sender;
+                  return (
+                    <div key={msg._id || index} className={`chat-bubble ${senderType}`}>
+                      <div>{msg.text}</div>
+                      <span className="chat-time">
+                        {new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Input Form Footer */}
+            <form onSubmit={handleSendMessage} className="chat-footer">
+              <input
+                type="text"
+                className="chat-input"
+                placeholder="Write a message to driver..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+              />
+              <button type="submit" className="chat-send-btn">
+                <SendIcon />
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,55 @@
 const Booking = require('../models/Booking');
 
-// 1. Create New Booking
+// 1. Get messages for a specific booking
+const getMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    res.status(200).json(booking.messages || []);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Server error while fetching messages' });
+  }
+};
+
+// 2. Send a message for a specific booking
+const sendMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sender, text } = req.body;
+
+    if (!text || !sender) {
+      return res.status(400).json({ message: 'Sender and text are required' });
+    }
+
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    const newMessage = {
+      sender, // 'driver' or 'tourist'
+      text,
+      createdAt: new Date()
+    };
+
+    booking.messages.push(newMessage);
+    await booking.save();
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ message: 'Server error while sending message' });
+  }
+};
+
+// 3. Create New Booking
 const createBooking = async (req, res) => {
   try {
     const { driverId, pickupLocation, destination, date, totalPrice } = req.body;
@@ -20,7 +69,7 @@ const createBooking = async (req, res) => {
   }
 };
 
-// 2. Get Logged-in Tourist's Bookings
+// 4. Get Logged-in Tourist's Bookings
 const getMyBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ tourist: req.user._id })
@@ -33,7 +82,7 @@ const getMyBookings = async (req, res) => {
   }
 };
 
-// 🟢 3. Get Logged-in Driver's Bookings (Driver ට ලැබුණු Requests)
+// 5. Get Logged-in Driver's Bookings (Driver ට ලැබුණු Requests)
 const getDriverBookings = async (req, res) => {
   try {
     const bookings = await Booking.find({ driver: req.user._id })
@@ -46,7 +95,7 @@ const getDriverBookings = async (req, res) => {
   }
 };
 
-// 4. Update Booking Status (Accept / Reject)
+// 6. Update Booking Status (Accept / Reject)
 const updateBookingStatus = async (req, res) => {
   try {
     const { status } = req.body;
@@ -65,7 +114,7 @@ const updateBookingStatus = async (req, res) => {
   }
 };
 
-// 5. Get All Bookings (For Admin)
+// 7. Get All Bookings (For Admin)
 const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
@@ -79,7 +128,10 @@ const getAllBookings = async (req, res) => {
   }
 };
 
+// 🟢 සියලුම Functions එකම Object එකක් ලෙස Export කිරීම
 module.exports = { 
+  getMessages,
+  sendMessage,
   createBooking, 
   getMyBookings, 
   getDriverBookings,

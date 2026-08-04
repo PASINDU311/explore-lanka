@@ -19,7 +19,16 @@ const bookingSchema = new mongoose.Schema({
     enum: ['pending', 'accepted', 'rejected', 'completed'],
     default: 'pending'
   },
-  totalPrice: { type: Number }
+  totalPrice: { type: Number },
+
+  // Chat Messages ගබඩා කිරීම සඳහා Array එක
+  messages: [
+    {
+      sender: { type: String, required: true }, // 'driver' හෝ 'tourist'
+      text: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now }
+    }
+  ]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Booking', bookingSchema);
