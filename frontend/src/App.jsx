@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { LanguageCurrencyProvider } from './context/LanguageCurrencyContext'; // 👈 Import Provider
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Explore from './pages/Explore';
@@ -10,7 +11,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MyBookings from './pages/MyBookings';
-import Profile from './pages/Profile'; // 👈 1. Profile Page එක Import කරන්න
+import Profile from './pages/Profile';
 
 const getUser = () => {
   try {
@@ -51,72 +52,73 @@ const ProtectedAdminRoute = ({ children }) => {
 
 function App() {
   return (
-    <Router>
-      <Navbar />
-      <Routes>
-        {/* 🌐 Public Routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/explore" element={<Explore />} />
-        <Route path="/destinations" element={<Explore />} />
-        <Route path="/planner" element={<Planner />} />
-        <Route path="/ai-itinerary" element={<Planner />} />
-        <Route path="/drivers" element={<Drivers />} />
+    <LanguageCurrencyProvider> {/* 👈 Context Provider Wrapped */}
+      <Router>
+        <Navbar />
+        <Routes>
+          {/* 🌐 Public Routes */}
+          <Route path="/" element={<Home />} />
+          <Route path="/explore" element={<Explore />} />
+          <Route path="/destinations" element={<Explore />} />
+          <Route path="/planner" element={<Planner />} />
+          <Route path="/ai-itinerary" element={<Planner />} />
+          <Route path="/drivers" element={<Drivers />} />
 
-        {/* 🔑 Auth Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+          {/* 🔑 Auth Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* 🔒 Protected Tourist Routes */}
-        <Route 
-          path="/my-bookings" 
-          element={
-            <ProtectedTouristRoute>
-              <MyBookings />
-            </ProtectedTouristRoute>
-          } 
-        />
-        {/* 👈 2. Profile Route එක එකතු කරන ලදී */}
-        <Route 
-          path="/profile" 
-          element={
-            <ProtectedTouristRoute>
-              <Profile />
-            </ProtectedTouristRoute>
-          } 
-        />
+          {/* 🔒 Protected Tourist Routes */}
+          <Route
+            path="/my-bookings"
+            element={
+              <ProtectedTouristRoute>
+                <MyBookings />
+              </ProtectedTouristRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedTouristRoute>
+                <Profile />
+              </ProtectedTouristRoute>
+            }
+          />
 
-        {/* 🔒 Protected Driver Route */}
-        <Route 
-          path="/driver-dashboard" 
-          element={
-            <ProtectedDriverRoute>
-              <DriverDashboard />
-            </ProtectedDriverRoute>
-          } 
-        />
+          {/* 🔒 Protected Driver Route */}
+          <Route
+            path="/driver-dashboard"
+            element={
+              <ProtectedDriverRoute>
+                <DriverDashboard />
+              </ProtectedDriverRoute>
+            }
+          />
 
-        {/* 🔒 Protected Admin Route */}
-        <Route 
-          path="/admin-dashboard" 
-          element={
-            <ProtectedAdminRoute>
-              <AdminDashboard />
-            </ProtectedAdminRoute>
-          } 
-        />
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedAdminRoute>
-              <AdminDashboard />
-            </ProtectedAdminRoute>
-          } 
-        />
+          {/* 🔒 Protected Admin Route */}
+          <Route
+            path="/admin-dashboard"
+            element={
+              <ProtectedAdminRoute>
+                <AdminDashboard />
+              </ProtectedAdminRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedAdminRoute>
+                <AdminDashboard />
+              </ProtectedAdminRoute>
+            }
+          />
 
-        {/* Catch-all Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
+          {/* Catch-all Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </LanguageCurrencyProvider>
   );
 }
 

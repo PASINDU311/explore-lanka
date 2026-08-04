@@ -3,17 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import API from '../services/api';
+import { useLanguageCurrency } from '../context/LanguageCurrencyContext'; // 👈 1. Import Context Hook
 
 const CATEGORIES = ['All', 'Culture', 'Beach', 'Hiking', 'Wildlife', 'Food'];
 
 const CATEGORY_STYLE = {
-  All:      { color: '#8A9E97', label: 'All' },
-  Culture:  { color: '#D9A441', label: 'Culture' },
-  Beach:    { color: '#2FA4A0', label: 'Beach' },
-  Hiking:   { color: '#6B8E4E', label: 'Hiking' },
+  All: { color: '#8A9E97', label: 'All' },
+  Culture: { color: '#D9A441', label: 'Culture' },
+  Beach: { color: '#2FA4A0', label: 'Beach' },
+  Hiking: { color: '#6B8E4E', label: 'Hiking' },
   Wildlife: { color: '#E0672B', label: 'Wildlife' },
-  Food:     { color: '#C4562A', label: 'Food' },
-  General:  { color: '#8A9E97', label: 'General' },
+  Food: { color: '#C4562A', label: 'Food' },
+  General: { color: '#8A9E97', label: 'General' },
 };
 
 const CategoryIcon = ({ cat, size = 15 }) => {
@@ -49,21 +50,23 @@ const CategoryIcon = ({ cat, size = 15 }) => {
 
 const Explore = () => {
   const navigate = useNavigate();
+  const { formatPrice, currency } = useLanguageCurrency(); // 👈 2. Context එක ලබා ගැනීම
+
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  
+
   const [itinerary, setItinerary] = useState(() => {
     const saved = localStorage.getItem('ai_itinerary');
     return saved ? JSON.parse(saved) : [];
   });
 
   const getImageUrl = (place) => {
-    const rawPath = (place.images && place.images.length > 0) 
-      ? place.images[0] 
+    const rawPath = (place.images && place.images.length > 0)
+      ? place.images[0]
       : (place.imageUrl || place.image);
 
     if (!rawPath) return 'https://images.unsplash.com/photo-1586861635167-e5223aadc9fe?w=600';
@@ -80,16 +83,16 @@ const Explore = () => {
 
   const getBestSeason = (place) => {
     const textToCheck = `
-      ${place.district || ''} 
-      ${place.name || ''} 
-      ${place.title || ''} 
-      ${place.location || ''} 
+      ${place.district || ''}
+      ${place.name || ''}
+      ${place.title || ''}
+      ${place.location || ''}
       ${place.address || ''}
     `.toLowerCase();
 
     const eastAndNorthKeywords = [
-      'trincomalee', 'trinco', 'batticaloa', 'ampara', 'jaffna', 'kilinochchi', 
-      'mullaitivu', 'arugambay', 'arugam', 'pasikudah', 'nilaveli', 'pigeon island', 
+      'trincomalee', 'trinco', 'batticaloa', 'ampara', 'jaffna', 'kilinochchi',
+      'mullaitivu', 'arugambay', 'arugam', 'pasikudah', 'nilaveli', 'pigeon island',
       'kalkudah', 'uppuveli', 'pottuvil', 'chundikulam'
     ];
 
@@ -138,7 +141,7 @@ const Explore = () => {
   const handleFindDriver = (placeName) => {
     navigate(`/drivers?destination=${encodeURIComponent(placeName)}`);
   };
-  
+
   const filteredPlaces = places.filter((place) => {
     const nameMatch = (place.name || place.title || '').toLowerCase().includes(searchTerm.toLowerCase());
     const districtMatch = (place.district || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -151,23 +154,23 @@ const Explore = () => {
     setSelectedCategory('All');
   };
 
-  // 🟢 🟢 🟢 OFFLINE PDF GENERATION FUNCTION 🟢 🟢 🟢
+  // 🟢 OFFLINE PDF GENERATION FUNCTION (Updated for Currency Toggle)
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
 
     // 1. PDF Header Background & Title
-    doc.setFillColor(15, 46, 43); // Theme Dark Green (#0F2E2B)
+    doc.setFillColor(15, 46, 43);
     doc.rect(0, 0, 210, 32, 'F');
 
-    doc.setTextColor(217, 164, 65); // Theme Gold (#D9A441)
+    doc.setTextColor(217, 164, 65);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.text('Sri Lanka Offline Travel Guide', 14, 16);
 
-    doc.setTextColor(245, 239, 225); // Paper text color
+    doc.setTextColor(245, 239, 225);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text('Your offline companion for exploring Sri Lanka destinations without internet.', 14, 24);
+    doc.text(`Offline guide for Sri Lanka destinations. Currency shown in ${currency}.`, 14, 24);
 
     // 2. Prepare Data for Table
     const tableData = filteredPlaces.map((place, index) => {
@@ -176,7 +179,10 @@ const Explore = () => {
       const category = place.category || 'General';
       const season = getBestSeason(place);
       const fee = place.entryFeeUSD ?? place.entryFee ?? place.price ?? 0;
-      const feeText = fee > 0 ? `$${fee}` : 'Free';
+      
+      // 👈 3. PDF එකට Auto Convert වූ මිල ලබාගැනීම
+      const feeText = formatPrice(fee);
+
       const desc = place.description
         ? (place.description.length > 110 ? `${place.description.substring(0, 110)}...` : place.description)
         : 'No description available.';
@@ -187,7 +193,7 @@ const Explore = () => {
     // 3. Render Table
     autoTable(doc, {
       startY: 38,
-      head: [['#', 'Destination', 'District', 'Category', 'Best Season', 'Fee', 'Description']],
+      head: [['#', 'Destination', 'District', 'Category', 'Best Season', `Fee (${currency})`, 'Description']],
       body: tableData,
       theme: 'grid',
       headStyles: {
@@ -206,7 +212,7 @@ const Explore = () => {
         2: { cellWidth: 22 },
         3: { cellWidth: 20 },
         4: { cellWidth: 22 },
-        5: { cellWidth: 16 },
+        5: { cellWidth: 22 },
         6: { cellWidth: 'auto' },
       },
       alternateRowStyles: {
@@ -297,7 +303,6 @@ const Explore = () => {
           line-height: 1.55;
         }
 
-        /* 🟢 PDF BUTTON STYLING */
         .sl-pdf-btn {
           display: inline-flex;
           align-items: center;
@@ -672,9 +677,9 @@ const Explore = () => {
           From ancient citadels to rolling surf and misted highlands — find where to go next.
         </p>
 
-        {/* 🟢 OFFLINE PDF DOWNLOAD BUTTON */}
-        <button 
-          className="sl-pdf-btn" 
+        {/* OFFLINE PDF DOWNLOAD BUTTON */}
+        <button
+          className="sl-pdf-btn"
           onClick={handleDownloadPDF}
           disabled={loading || filteredPlaces.length === 0}
         >
@@ -749,7 +754,7 @@ const Explore = () => {
             {filteredPlaces.map((place) => {
               const catKey = CATEGORY_STYLE[place.category] ? place.category : 'General';
               const catColor = CATEGORY_STYLE[catKey].color;
-              
+
               const imageSrc = getImageUrl(place);
               const fee = place.entryFeeUSD ?? place.entryFee ?? place.price ?? 0;
               const season = getBestSeason(place);
@@ -763,7 +768,7 @@ const Explore = () => {
                       src={imageSrc}
                       alt={placeTitle}
                     />
-                    
+
                     <div className="sl-season-badge">
                       <span className="badge-label">Best:</span> {season}
                     </div>
@@ -801,8 +806,9 @@ const Explore = () => {
                       </button>
 
                       <div className="sl-card-footer">
+                        {/* 🟢 4. Card එකෙහි ගාස්තුව USD / LKR අනුව ස්වයංක්‍රීයව වෙනස් වේ */}
                         <span className="sl-price">
-                          {fee > 0 ? `$${fee} entry` : 'Free entry'}
+                          {fee > 0 ? `${formatPrice(fee)} entry` : 'Free entry'}
                         </span>
                         <span className="sl-cat-tag" style={{ '--cat-color': catColor }}>{catKey}</span>
                       </div>

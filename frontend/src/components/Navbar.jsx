@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useLanguageCurrency } from '../context/LanguageCurrencyContext'; // 👈 1. Import Context Hook
 
 const Navbar = ({ onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 🟢 Language & Currency Context
+  const { currency, setCurrency, language, setLanguage } = useLanguageCurrency(); // 👈 2. Get Context values
 
   // 🟢 AI Itinerary Count State & Listener
   const [itineraryCount, setItineraryCount] = useState(0);
@@ -66,6 +70,40 @@ const Navbar = ({ onLogout }) => {
   const isActive = (path) => currentPath === path;
   const avatarLetter = currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U';
 
+  // 🟢 Currency & Language Controls Component
+  const renderControls = () => (
+    <div className="vce-controls-group">
+      {/* USD / LKR Currency Switcher */}
+      <div className="vce-currency-toggle">
+        <button
+          type="button"
+          className={`vce-curr-btn ${currency === 'USD' ? 'active' : ''}`}
+          onClick={() => setCurrency('USD')}
+        >
+          USD
+        </button>
+        <button
+          type="button"
+          className={`vce-curr-btn ${currency === 'LKR' ? 'active' : ''}`}
+          onClick={() => setCurrency('LKR')}
+        >
+          LKR
+        </button>
+      </div>
+
+      {/* Language Switcher */}
+      <select
+        className="vce-lang-select"
+        value={language}
+        onChange={(e) => setLanguage(e.target.value)}
+      >
+        <option value="en">🇬🇧 EN</option>
+        <option value="fr">🇫🇷 FR</option>
+        <option value="de">🇩🇪 DE</option>
+      </select>
+    </div>
+  );
+
   /* 🛡️ Admin Bar */
   if (isAdminPage) {
     return (
@@ -74,11 +112,22 @@ const Navbar = ({ onLogout }) => {
           .admin-topbar { background: #0F2E2B; border-bottom: 1px solid #234E48; padding: 0.8rem 2rem; }
           .admin-topbar-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
           .admin-brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: #F5EFE1; font-weight: 600; }
+          .admin-right { display: flex; align-items: center; gap: 1rem; }
           .admin-logout-btn { background: rgba(224,103,43,0.15); color: #F89D7A; border: 1px solid #E0672B; padding: 0.45rem 1.1rem; border-radius: 999px; cursor: pointer; }
+          
+          /* Switcher Styles */
+          .vce-controls-group { display: flex; align-items: center; gap: 0.6rem; }
+          .vce-currency-toggle { display: flex; background: #163C37; border: 1px solid #234E48; border-radius: 20px; padding: 2px; }
+          .vce-curr-btn { background: transparent; color: #A8C4BE; border: none; padding: 0.25rem 0.55rem; border-radius: 16px; font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+          .vce-curr-btn.active { background: #D9A441; color: #0F2E2B; }
+          .vce-lang-select { background: #163C37; border: 1px solid #234E48; color: #F5EFE1; padding: 0.3rem 0.5rem; border-radius: 8px; font-size: 0.78rem; cursor: pointer; outline: none; }
         `}</style>
         <div className="admin-topbar-container">
           <Link to="/admin-dashboard" className="admin-brand">🇱🇰 Ceylon <i>Admin</i></Link>
-          <button onClick={handleLogout} className="admin-logout-btn">Logout</button>
+          <div className="admin-right">
+            {renderControls()}
+            <button onClick={handleLogout} className="admin-logout-btn">Logout</button>
+          </div>
         </div>
       </header>
     );
@@ -92,11 +141,22 @@ const Navbar = ({ onLogout }) => {
           .driver-topbar { background: #0F2E2B; border-bottom: 1px solid #234E48; padding: 0.8rem 2rem; }
           .driver-topbar-container { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
           .driver-brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: #F5EFE1; font-weight: 600; }
+          .driver-right { display: flex; align-items: center; gap: 1rem; }
           .driver-logout-btn { background: rgba(224,103,43,0.15); color: #F89D7A; border: 1px solid #E0672B; padding: 0.45rem 1.1rem; border-radius: 999px; cursor: pointer; }
+
+          /* Switcher Styles */
+          .vce-controls-group { display: flex; align-items: center; gap: 0.6rem; }
+          .vce-currency-toggle { display: flex; background: #163C37; border: 1px solid #234E48; border-radius: 20px; padding: 2px; }
+          .vce-curr-btn { background: transparent; color: #A8C4BE; border: none; padding: 0.25rem 0.55rem; border-radius: 16px; font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+          .vce-curr-btn.active { background: #D9A441; color: #0F2E2B; }
+          .vce-lang-select { background: #163C37; border: 1px solid #234E48; color: #F5EFE1; padding: 0.3rem 0.5rem; border-radius: 8px; font-size: 0.78rem; cursor: pointer; outline: none; }
         `}</style>
         <div className="driver-topbar-container">
           <Link to="/driver-dashboard" className="driver-brand">🇱🇰 Ceylon <i>Chauffeur</i></Link>
-          <button onClick={handleLogout} className="driver-logout-btn">Logout</button>
+          <div className="driver-right">
+            {renderControls()}
+            <button onClick={handleLogout} className="driver-logout-btn">Logout</button>
+          </div>
         </div>
       </header>
     );
@@ -141,6 +201,14 @@ const Navbar = ({ onLogout }) => {
         }
 
         .vce-user-section { display: flex; align-items: center; gap: 1rem; }
+        
+        /* 🟢 Currency & Language Switchers Styling */
+        .vce-controls-group { display: flex; align-items: center; gap: 0.6rem; }
+        .vce-currency-toggle { display: flex; background: #163C37; border: 1px solid #234E48; border-radius: 20px; padding: 2px; }
+        .vce-curr-btn { background: transparent; color: #A8C4BE; border: none; padding: 0.3rem 0.65rem; border-radius: 16px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .vce-curr-btn.active { background: #D9A441; color: #0F2E2B; }
+        .vce-lang-select { background: #163C37; border: 1px solid #234E48; color: #F5EFE1; padding: 0.35rem 0.6rem; border-radius: 8px; font-size: 0.8rem; cursor: pointer; outline: none; }
+        
         .vce-btn-login { background: #D9A441; color: #0F2E2B; padding: 0.5rem 1.1rem; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
         .vce-btn-register { background: transparent; color: #F5EFE1; border: 1px solid #234E48; padding: 0.5rem 1.1rem; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
         .vce-btn-register:hover { border-color: #D9A441; color: #D9A441; }
@@ -206,8 +274,11 @@ const Navbar = ({ onLogout }) => {
           )}
         </ul>
 
-        {/* PROFILE ICON / AUTH BUTTONS */}
+        {/* CONTROLS & PROFILE ICON / AUTH BUTTONS */}
         <div className="vce-user-section">
+          {/* 🟢 Currency & Language Switchers */}
+          {renderControls()}
+
           {currentUser ? (
             <Link to="/profile" className={`vce-profile-btn ${isActive('/profile') ? 'active' : ''}`}>
               <div className="vce-avatar-icon">{avatarLetter}</div>
