@@ -5,14 +5,13 @@ import Home from './pages/Home';
 import Explore from './pages/Explore';
 import Planner from './pages/Planner';
 import Drivers from './pages/Drivers';
-import Dashboard from './pages/Dashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MyBookings from './pages/MyBookings';
+import Profile from './pages/Profile'; // 👈 1. Profile Page එක Import කරන්න
 
-// User Session / LocalStorage Read Helper
 const getUser = () => {
   try {
     const sessionUser = sessionStorage.getItem('user');
@@ -29,27 +28,24 @@ const getUser = () => {
 // 🔒 Protected Route for Tourist Only
 const ProtectedTouristRoute = ({ children }) => {
   const user = getUser();
-  if (!user || user.role !== 'tourist') {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'tourist') return <Navigate to="/" replace />;
   return children;
 };
 
 // 🔒 Protected Route for Driver Only
 const ProtectedDriverRoute = ({ children }) => {
   const user = getUser();
-  if (!user || user.role !== 'driver') {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'driver') return <Navigate to="/" replace />;
   return children;
 };
 
 // 🔒 Protected Route for Admin Only
 const ProtectedAdminRoute = ({ children }) => {
   const user = getUser();
-  if (!user || user.role !== 'admin') {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'admin') return <Navigate to="/" replace />;
   return children;
 };
 
@@ -58,28 +54,19 @@ function App() {
     <Router>
       <Navbar />
       <Routes>
-        {/* Public Routes */}
+        {/* 🌐 Public Routes */}
         <Route path="/" element={<Home />} />
-        
-        {/* Explore / Places / Destinations Routes */}
         <Route path="/explore" element={<Explore />} />
-        <Route path="/places" element={<Explore />} />
         <Route path="/destinations" element={<Explore />} />
-        
-        {/* AI Itinerary / Planner Routes */}
         <Route path="/planner" element={<Planner />} />
-        <Route path="/itinerary" element={<Planner />} />
         <Route path="/ai-itinerary" element={<Planner />} />
-        
-        {/* 🔒 Tourist Protected Routes */}
-        <Route 
-          path="/drivers" 
-          element={
-            <ProtectedTouristRoute>
-              <Drivers />
-            </ProtectedTouristRoute>
-          } 
-        />
+        <Route path="/drivers" element={<Drivers />} />
+
+        {/* 🔑 Auth Routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        {/* 🔒 Protected Tourist Routes */}
         <Route 
           path="/my-bookings" 
           element={
@@ -88,8 +75,17 @@ function App() {
             </ProtectedTouristRoute>
           } 
         />
+        {/* 👈 2. Profile Route එක එකතු කරන ලදී */}
+        <Route 
+          path="/profile" 
+          element={
+            <ProtectedTouristRoute>
+              <Profile />
+            </ProtectedTouristRoute>
+          } 
+        />
 
-        {/* 🔒 Driver Protected Routes */}
+        {/* 🔒 Protected Driver Route */}
         <Route 
           path="/driver-dashboard" 
           element={
@@ -99,15 +95,7 @@ function App() {
           } 
         />
 
-        {/* 🔒 Admin Protected Routes (All Admin Sub-paths point to AdminDashboard) */}
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedAdminRoute>
-              <AdminDashboard />
-            </ProtectedAdminRoute>
-          } 
-        />
+        {/* 🔒 Protected Admin Route */}
         <Route 
           path="/admin-dashboard" 
           element={
@@ -117,15 +105,7 @@ function App() {
           } 
         />
         <Route 
-          path="/admin/manage-users" 
-          element={
-            <ProtectedAdminRoute>
-              <AdminDashboard />
-            </ProtectedAdminRoute>
-          } 
-        />
-        <Route 
-          path="/admin/manage-drivers" 
+          path="/admin" 
           element={
             <ProtectedAdminRoute>
               <AdminDashboard />
@@ -133,12 +113,7 @@ function App() {
           } 
         />
 
-        {/* Auth & Other Routes */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-
-        {/* Catch-all Fallback Route */}
+        {/* Catch-all Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

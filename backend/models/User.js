@@ -2,12 +2,21 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
+  // 🟢 අලුතින් එකතු කළ Fields
+  firstName: { type: String, default: '' },
+  lastName: { type: String, default: '' },
   email: { 
     type: String, 
     required: true, 
     unique: true, 
-    lowercase: true, // 🟢 Email එක auto simple අකුරු කරයි
-    trim: true       // 🟢 වටේ තියෙන Spaces අයින් කරයි
+    lowercase: true, 
+    trim: true 
+  },
+  phone: { type: String, default: '' },
+  gender: { 
+    type: String, 
+    enum: ['Male', 'Female', 'Other'], 
+    default: 'Other' 
   },
   password: { type: String, required: true },
   role: { 

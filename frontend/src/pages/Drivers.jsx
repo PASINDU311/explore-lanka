@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // 🎯 Added useNavigate
 import API from '../services/api';
 
 const DriverIcon = () => (
@@ -17,6 +18,7 @@ const CloseIcon = () => (
 );
 
 const Drivers = () => {
+  const navigate = useNavigate(); // 🎯 Initialize useNavigate
   const [drivers, setDrivers] = useState([]);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [bookingData, setBookingData] = useState({ 
@@ -26,11 +28,43 @@ const Drivers = () => {
     note: '' 
   });
 
+  // 🎯 Helper function to check logged in user
+  const getUser = () => {
+    try {
+      const sessionUser = sessionStorage.getItem('user');
+      if (sessionUser) return JSON.parse(sessionUser);
+
+      const localUser = localStorage.getItem('user');
+      if (localUser) return JSON.parse(localUser);
+    } catch (e) {
+      console.error('Error reading user:', e);
+    }
+    return null;
+  };
+
   useEffect(() => {
     API.get('/auth/drivers')
       .then((res) => setDrivers(res.data))
       .catch((err) => console.error(err));
   }, []);
+
+  // 🎯 Reserve Button එක Click කරද්දී Authentication Check කිරීම
+  const handleReserveClick = (driver) => {
+    const user = getUser();
+
+    if (!user) {
+      alert('Driver කෙනෙකු වෙන්කරවා ගැනීමට (Reserve) කරුණාකර පළමුව Sign In වන්න.');
+      navigate('/login');
+      return;
+    }
+
+    if (user.role !== 'tourist') {
+      alert('Driver කෙනෙකු වෙන්කරවා ගැනීමට ඔබට Tourist ගිණුමක් තිබිය යුතුය.');
+      return;
+    }
+
+    setSelectedDriver(driver);
+  };
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
@@ -439,7 +473,8 @@ const Drivers = () => {
                   </div>
                 </div>
 
-                <button className="dr-book-btn" onClick={() => setSelectedDriver(driver)}>
+                {/* 🎯 Updated onClick to call handleReserveClick */}
+                <button className="dr-book-btn" onClick={() => handleReserveClick(driver)}>
                   <DriverIcon /> Reserve Driver
                 </button>
               </div>
