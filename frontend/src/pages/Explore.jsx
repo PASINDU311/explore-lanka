@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // 🟢 1. useNavigate Import කර ගන්න
+import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import API from '../services/api';
 
 const CATEGORIES = ['All', 'Culture', 'Beach', 'Hiking', 'Wildlife', 'Food'];
@@ -46,7 +48,7 @@ const CategoryIcon = ({ cat, size = 15 }) => {
 };
 
 const Explore = () => {
-  const navigate = useNavigate(); // 🟢 2. Router Navigation සඳහා Hook එක
+  const navigate = useNavigate();
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -133,8 +135,6 @@ const Explore = () => {
     window.dispatchEvent(new Event('itineraryUpdated'));
   };
 
-  
-  // 🟢 handleFindDriver Function එක /drivers ලෙස වෙනස් කරන්න
   const handleFindDriver = (placeName) => {
     navigate(`/drivers?destination=${encodeURIComponent(placeName)}`);
   };
@@ -149,6 +149,83 @@ const Explore = () => {
   const clearFilters = () => {
     setSearchTerm('');
     setSelectedCategory('All');
+  };
+
+  // 🟢 🟢 🟢 OFFLINE PDF GENERATION FUNCTION 🟢 🟢 🟢
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+
+    // 1. PDF Header Background & Title
+    doc.setFillColor(15, 46, 43); // Theme Dark Green (#0F2E2B)
+    doc.rect(0, 0, 210, 32, 'F');
+
+    doc.setTextColor(217, 164, 65); // Theme Gold (#D9A441)
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Sri Lanka Offline Travel Guide', 14, 16);
+
+    doc.setTextColor(245, 239, 225); // Paper text color
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Your offline companion for exploring Sri Lanka destinations without internet.', 14, 24);
+
+    // 2. Prepare Data for Table
+    const tableData = filteredPlaces.map((place, index) => {
+      const title = place.title || place.name || 'N/A';
+      const district = place.district || 'Sri Lanka';
+      const category = place.category || 'General';
+      const season = getBestSeason(place);
+      const fee = place.entryFeeUSD ?? place.entryFee ?? place.price ?? 0;
+      const feeText = fee > 0 ? `$${fee}` : 'Free';
+      const desc = place.description
+        ? (place.description.length > 110 ? `${place.description.substring(0, 110)}...` : place.description)
+        : 'No description available.';
+
+      return [index + 1, title, district, category, season, feeText, desc];
+    });
+
+    // 3. Render Table
+    autoTable(doc, {
+      startY: 38,
+      head: [['#', 'Destination', 'District', 'Category', 'Best Season', 'Fee', 'Description']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [22, 60, 55],
+        textColor: [217, 164, 65],
+        fontStyle: 'bold',
+        fontSize: 9,
+      },
+      bodyStyles: {
+        fontSize: 8,
+        textColor: [30, 30, 30],
+      },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: 32, fontStyle: 'bold' },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 22 },
+        5: { cellWidth: 16 },
+        6: { cellWidth: 'auto' },
+      },
+      alternateRowStyles: {
+        fillColor: [248, 246, 240],
+      },
+      margin: { top: 38, left: 10, right: 10 },
+    });
+
+    // 4. Footer & Page Numbers
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      doc.text(`Page ${i} of ${pageCount} | Official Ceylon Travel Guide (Offline Copy)`, 10, 290);
+    }
+
+    // 5. Download File
+    doc.save('Sri_Lanka_Offline_Travel_Guide.pdf');
   };
 
   return (
@@ -219,6 +296,34 @@ const Explore = () => {
           font-size: 1.02rem;
           line-height: 1.55;
         }
+
+        /* 🟢 PDF BUTTON STYLING */
+        .sl-pdf-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: var(--gold);
+          color: var(--ink);
+          border: none;
+          padding: 0.7rem 1.3rem;
+          border-radius: 999px;
+          font-family: 'Inter', sans-serif;
+          font-weight: 700;
+          font-size: 0.88rem;
+          cursor: pointer;
+          transition: transform 0.15s ease, filter 0.15s ease;
+          margin-top: 1.2rem;
+          box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+        }
+        .sl-pdf-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          filter: brightness(1.08);
+        }
+        .sl-pdf-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .sl-wave {
           position: absolute;
           left: 0; right: 0; bottom: -1px;
@@ -462,7 +567,6 @@ const Explore = () => {
           line-height: 1.5;
         }
 
-        /* 🟢 4. Find Driver Button Styling */
         .sl-driver-btn {
           width: 100%;
           background: var(--ink);
@@ -567,6 +671,16 @@ const Explore = () => {
         <p className="sl-subtitle">
           From ancient citadels to rolling surf and misted highlands — find where to go next.
         </p>
+
+        {/* 🟢 OFFLINE PDF DOWNLOAD BUTTON */}
+        <button 
+          className="sl-pdf-btn" 
+          onClick={handleDownloadPDF}
+          disabled={loading || filteredPlaces.length === 0}
+        >
+          📄 Download Offline Guide (PDF)
+        </button>
+
         <svg className="sl-wave" viewBox="0 0 1200 46" preserveAspectRatio="none">
           <path d="M0,24 C150,44 300,4 450,24 C600,44 750,4 900,24 C1050,44 1150,14 1200,24 L1200,46 L0,46 Z" fill="#0F2E2B" />
         </svg>
@@ -679,7 +793,6 @@ const Explore = () => {
                     </div>
 
                     <div>
-                      {/* 🟢 5. "Book Driver for [Place]" Button */}
                       <button
                         className="sl-driver-btn"
                         onClick={() => handleFindDriver(placeTitle)}
