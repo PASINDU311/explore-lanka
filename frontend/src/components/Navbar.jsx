@@ -1,9 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 const Navbar = ({ onLogout }) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // 🟢 AI Itinerary Count State & Listener
+  const [itineraryCount, setItineraryCount] = useState(0);
+
+  useEffect(() => {
+    const updateCount = () => {
+      try {
+        const saved = localStorage.getItem('ai_itinerary');
+        const items = saved ? JSON.parse(saved) : [];
+        setItineraryCount(items.length);
+      } catch (e) {
+        console.error('Error reading itinerary count:', e);
+        setItineraryCount(0);
+      }
+    };
+
+    updateCount(); // Initial count load
+
+    // Custom event සහ Storage event මගින් Real-time update ලබා ගැනීම
+    window.addEventListener('itineraryUpdated', updateCount);
+    window.addEventListener('storage', updateCount);
+
+    return () => {
+      window.removeEventListener('itineraryUpdated', updateCount);
+      window.removeEventListener('storage', updateCount);
+    };
+  }, []);
 
   const getUser = () => {
     try {
@@ -83,9 +110,36 @@ const Navbar = ({ onLogout }) => {
         .vce-nav-container { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
         .vce-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; color: #F5EFE1; font-weight: 600; font-size: 1.2rem; }
         .vce-links { display: flex; gap: 0.5rem; list-style: none; margin: 0; padding: 0; }
-        .vce-links a { text-decoration: none; color: #A8C4BE; padding: 0.5rem 0.9rem; border-radius: 8px; font-size: 0.9rem; }
+        .vce-links a { 
+          text-decoration: none; 
+          color: #A8C4BE; 
+          padding: 0.5rem 0.9rem; 
+          border-radius: 8px; 
+          font-size: 0.9rem; 
+          display: inline-flex; 
+          align-items: center; 
+          gap: 0.4rem; 
+          transition: all 0.2s ease;
+        }
         .vce-links a.active { color: #D9A441; background: rgba(217, 164, 65, 0.1); font-weight: 600; }
         
+        /* 🟡 Itinerary Badge Style */
+        .vce-itinerary-badge {
+          background: #D9A441;
+          color: #0F2E2B;
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 0.15rem 0.5rem;
+          border-radius: 999px;
+          min-width: 18px;
+          height: 18px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          line-height: 1;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
         .vce-user-section { display: flex; align-items: center; gap: 1rem; }
         .vce-btn-login { background: #D9A441; color: #0F2E2B; padding: 0.5rem 1.1rem; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
         .vce-btn-register { background: transparent; color: #F5EFE1; border: 1px solid #234E48; padding: 0.5rem 1.1rem; border-radius: 999px; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
@@ -135,7 +189,17 @@ const Navbar = ({ onLogout }) => {
         <ul className="vce-links">
           <li><Link to="/" className={isActive('/') ? 'active' : ''}>Home</Link></li>
           <li><Link to="/destinations" className={isActive('/destinations') || isActive('/explore') ? 'active' : ''}>Destinations</Link></li>
-          <li><Link to="/ai-itinerary" className={isActive('/ai-itinerary') || isActive('/planner') ? 'active' : ''}>AI Itinerary</Link></li>
+          
+          {/* AI Itinerary with Real-time Badge Count */}
+          <li>
+            <Link to="/ai-itinerary" className={isActive('/ai-itinerary') || isActive('/planner') ? 'active' : ''}>
+              <span>AI Itinerary</span>
+              {itineraryCount > 0 && (
+                <span className="vce-itinerary-badge">{itineraryCount}</span>
+              )}
+            </Link>
+          </li>
+
           <li><Link to="/drivers" className={isActive('/drivers') ? 'active' : ''}>Find Drivers</Link></li>
           {currentUser && role === 'tourist' && (
             <li><Link to="/my-bookings" className={isActive('/my-bookings') ? 'active' : ''}>My Bookings</Link></li>

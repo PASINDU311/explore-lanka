@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // 🎯 Added useNavigate
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import API from '../services/api';
 
 const DriverIcon = () => (
@@ -18,17 +18,35 @@ const CloseIcon = () => (
 );
 
 const Drivers = () => {
-  const navigate = useNavigate(); // 🎯 Initialize useNavigate
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Explore page එකෙන් එන destination එක URL query parameter එකෙන් ලබා ගැනීම
+  const urlDestination = searchParams.get('destination') || '';
+
   const [drivers, setDrivers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
-  const [bookingData, setBookingData] = useState({ 
-    pickupLocation: '', 
-    destination: '', 
-    date: '', 
-    note: '' 
+
+  const [bookingData, setBookingData] = useState({
+    pickupLocation: '',
+    destination: urlDestination,
+    date: '',
+    note: ''
   });
 
-  // 🎯 Helper function to check logged in user
+  // URL query parameter එක වෙනස් වුවහොත් destination state එක update කිරීමට
+  useEffect(() => {
+    if (urlDestination) {
+      setBookingData((prev) => ({ ...prev, destination: urlDestination }));
+    }
+  }, [urlDestination]);
+
+  // Minimum selectable date is today
+  const todayDate = new Date().toISOString().split('T')[0];
+
   const getUser = () => {
     try {
       const sessionUser = sessionStorage.getItem('user');
@@ -37,18 +55,26 @@ const Drivers = () => {
       const localUser = localStorage.getItem('user');
       if (localUser) return JSON.parse(localUser);
     } catch (e) {
-      console.error('Error reading user:', e);
+      console.error('Error reading user session:', e);
     }
     return null;
   };
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     API.get('/auth/drivers')
-      .then((res) => setDrivers(res.data))
-      .catch((err) => console.error(err));
+      .then((res) => {
+        setDrivers(res.data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setError('Failed to fetch drivers. Please check your network connection.');
+        setLoading(false);
+      });
   }, []);
 
-  // 🎯 Reserve Button එක Click කරද්දී Authentication Check කිරීම
   const handleReserveClick = (driver) => {
     const user = getUser();
 
@@ -66,8 +92,21 @@ const Drivers = () => {
     setSelectedDriver(driver);
   };
 
+  const handleCloseModal = () => {
+    if (isSubmitting) return;
+    setSelectedDriver(null);
+    setBookingData({ 
+      pickupLocation: '', 
+      destination: urlDestination, 
+      date: '', 
+      note: '' 
+    });
+  };
+
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
     try {
       await API.post('/bookings', {
         driverId: selectedDriver._id,
@@ -78,10 +117,11 @@ const Drivers = () => {
       });
 
       alert('Booking Request Sent to Driver Successfully! Check your My Bookings page for updates.');
-      setSelectedDriver(null);
-      setBookingData({ pickupLocation: '', destination: '', date: '', note: '' });
+      handleCloseModal();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to send booking request');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -107,7 +147,7 @@ const Drivers = () => {
           padding-bottom: 5rem;
         }
 
-        /* ---------- HERO ---------- */
+        /* HERO */
         .dr-hero {
           position: relative;
           padding: 4rem 1.5rem 5.5rem;
@@ -158,20 +198,18 @@ const Drivers = () => {
           display: block;
         }
 
-        /* ---------- DRIVERS GRID ---------- */
+        /* GRID */
         .dr-container {
           max-width: 1100px;
           margin: 0 auto;
           padding: 0 1.5rem;
         }
-
         .dr-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
           gap: 1.5rem;
           margin-top: 1rem;
         }
-
         .dr-card {
           background: var(--panel);
           border: 1px solid var(--panel-edge);
@@ -187,7 +225,6 @@ const Drivers = () => {
           transform: translateY(-3px);
           border-color: var(--gold);
         }
-
         .dr-card-header {
           display: flex;
           align-items: center;
@@ -215,7 +252,6 @@ const Drivers = () => {
           color: var(--paper);
           margin: 0;
         }
-
         .dr-details {
           display: flex;
           flex-direction: column;
@@ -249,7 +285,6 @@ const Drivers = () => {
           font-weight: 600;
           font-size: 0.82rem;
         }
-
         .dr-book-btn {
           width: 100%;
           display: flex;
@@ -272,7 +307,7 @@ const Drivers = () => {
           filter: brightness(1.06);
         }
 
-        /* ---------- MODAL OVERLAY ---------- */
+        /* MODAL */
         .dr-modal-overlay {
           position: fixed;
           inset: 0;
@@ -284,7 +319,6 @@ const Drivers = () => {
           padding: 1.2rem;
           z-index: 1000;
         }
-
         .dr-modal-ticket {
           background: var(--panel);
           border: 1px solid var(--panel-edge);
@@ -295,12 +329,10 @@ const Drivers = () => {
           overflow: hidden;
           animation: modalFadeIn 0.2s ease-out;
         }
-
         @keyframes modalFadeIn {
           from { opacity: 0; transform: scale(0.96); }
           to { opacity: 1; transform: scale(1); }
         }
-
         .dr-modal-head {
           display: flex;
           justify-content: space-between;
@@ -316,7 +348,6 @@ const Drivers = () => {
           text-transform: uppercase;
           color: var(--sage);
         }
-        .dr-modal-head strong { color: var(--gold); }
         .dr-close-btn {
           background: transparent;
           border: none;
@@ -328,11 +359,7 @@ const Drivers = () => {
           transition: color 0.15s;
         }
         .dr-close-btn:hover { color: var(--paper); }
-
-        .dr-modal-body {
-          padding: 1.5rem 1.4rem 1.8rem;
-        }
-
+        .dr-modal-body { padding: 1.5rem 1.4rem 1.8rem; }
         .dr-modal-title {
           font-family: 'Fraunces', serif;
           font-size: 1.35rem;
@@ -340,13 +367,11 @@ const Drivers = () => {
           margin: 0 0 1.2rem;
         }
         .dr-modal-title span { color: var(--gold); }
-
         .dr-form {
           display: flex;
           flex-direction: column;
           gap: 1.1rem;
         }
-
         .dr-field label {
           display: block;
           font-family: 'IBM Plex Mono', monospace;
@@ -356,7 +381,6 @@ const Drivers = () => {
           color: var(--sage);
           margin-bottom: 0.45rem;
         }
-
         .dr-field input,
         .dr-field textarea {
           width: 100%;
@@ -380,18 +404,15 @@ const Drivers = () => {
         .dr-field textarea:focus {
           border-color: var(--gold);
         }
-
         .dr-field textarea {
           resize: vertical;
           min-height: 75px;
         }
-
         .dr-modal-actions {
           display: flex;
           gap: 0.8rem;
           margin-top: 0.5rem;
         }
-
         .dr-btn-confirm {
           flex: 1;
           background: var(--gold);
@@ -404,8 +425,11 @@ const Drivers = () => {
           cursor: pointer;
           transition: filter 0.15s;
         }
-        .dr-btn-confirm:hover { filter: brightness(1.06); }
-
+        .dr-btn-confirm:hover:not(:disabled) { filter: brightness(1.06); }
+        .dr-btn-confirm:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
         .dr-btn-cancel {
           background: transparent;
           border: 1px solid var(--panel-edge);
@@ -417,10 +441,15 @@ const Drivers = () => {
           cursor: pointer;
           transition: background 0.15s, color 0.15s;
         }
-        .dr-btn-cancel:hover {
+        .dr-btn-cancel:hover:not(:disabled) {
           background: rgba(224,103,43,0.15);
           border-color: var(--coral);
           color: #F3C6A8;
+        }
+        .dr-status-msg {
+          text-align: center;
+          padding: 3rem;
+          color: var(--sage);
         }
       `}</style>
 
@@ -438,9 +467,17 @@ const Drivers = () => {
 
       {/* DRIVERS CARDS GRID */}
       <div className="dr-container">
-        {drivers.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--sage)' }}>
+        {loading ? (
+          <div className="dr-status-msg">
             <p>Loading available drivers...</p>
+          </div>
+        ) : error ? (
+          <div className="dr-status-msg" style={{ color: 'var(--coral)' }}>
+            <p>{error}</p>
+          </div>
+        ) : drivers.length === 0 ? (
+          <div className="dr-status-msg">
+            <p>No verified drivers available at the moment.</p>
           </div>
         ) : (
           <div className="dr-grid">
@@ -473,7 +510,6 @@ const Drivers = () => {
                   </div>
                 </div>
 
-                {/* 🎯 Updated onClick to call handleReserveClick */}
                 <button className="dr-book-btn" onClick={() => handleReserveClick(driver)}>
                   <DriverIcon /> Reserve Driver
                 </button>
@@ -489,7 +525,7 @@ const Drivers = () => {
           <div className="dr-modal-ticket">
             <div className="dr-modal-head">
               <span>Reservation Pass</span>
-              <button className="dr-close-btn" onClick={() => setSelectedDriver(null)}>
+              <button className="dr-close-btn" onClick={handleCloseModal} disabled={isSubmitting}>
                 <CloseIcon />
               </button>
             </div>
@@ -505,6 +541,7 @@ const Drivers = () => {
                     type="text"
                     placeholder="e.g. CMB Airport / Colombo Hotel"
                     required
+                    disabled={isSubmitting}
                     value={bookingData.pickupLocation}
                     onChange={(e) => setBookingData({ ...bookingData, pickupLocation: e.target.value })}
                   />
@@ -517,6 +554,7 @@ const Drivers = () => {
                     type="text"
                     placeholder="e.g. Kandy / Ella / Galle"
                     required
+                    disabled={isSubmitting}
                     value={bookingData.destination}
                     onChange={(e) => setBookingData({ ...bookingData, destination: e.target.value })}
                   />
@@ -527,7 +565,9 @@ const Drivers = () => {
                   <input
                     id="travelDate"
                     type="date"
+                    min={todayDate}
                     required
+                    disabled={isSubmitting}
                     value={bookingData.date}
                     onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
                   />
@@ -538,16 +578,17 @@ const Drivers = () => {
                   <textarea
                     id="note"
                     placeholder="Provide special requests or flight details..."
+                    disabled={isSubmitting}
                     value={bookingData.note}
                     onChange={(e) => setBookingData({ ...bookingData, note: e.target.value })}
                   />
                 </div>
 
                 <div className="dr-modal-actions">
-                  <button type="submit" className="dr-btn-confirm">
-                    Confirm Request
+                  <button type="submit" className="dr-btn-confirm" disabled={isSubmitting}>
+                    {isSubmitting ? 'Sending Request...' : 'Confirm Request'}
                   </button>
-                  <button type="button" className="dr-btn-cancel" onClick={() => setSelectedDriver(null)}>
+                  <button type="button" className="dr-btn-cancel" onClick={handleCloseModal} disabled={isSubmitting}>
                     Cancel
                   </button>
                 </div>

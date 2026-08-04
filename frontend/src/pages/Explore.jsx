@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // 🟢 1. useNavigate Import කර ගන්න
 import API from '../services/api';
 
 const CATEGORIES = ['All', 'Culture', 'Beach', 'Hiking', 'Wildlife', 'Food'];
@@ -45,16 +46,20 @@ const CategoryIcon = ({ cat, size = 15 }) => {
 };
 
 const Explore = () => {
+  const navigate = useNavigate(); // 🟢 2. Router Navigation සඳහා Hook එක
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  
+  const [itinerary, setItinerary] = useState(() => {
+    const saved = localStorage.getItem('ai_itinerary');
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  // 🟢 Database එකේ images Array එක හෝ සෙසු fields පරීක්ෂා කරන Helper Function එක
   const getImageUrl = (place) => {
-    // DB එකේ images array එක ඇතුළේ මුල්ම image එක තිබේදැයි බලයි
     const rawPath = (place.images && place.images.length > 0) 
       ? place.images[0] 
       : (place.imageUrl || place.image);
@@ -63,13 +68,36 @@ const Explore = () => {
 
     const cleanUrl = rawPath.replace(/\\/g, '/');
 
-    // DB එකේ දැනටමත් http://localhost:5000 ලෙස ඇති බැවින් කෙලින්ම return කරයි
     if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
       return cleanUrl;
     }
 
     const cleanPath = cleanUrl.startsWith('/') ? cleanUrl : `/${cleanUrl}`;
     return `http://localhost:5000${cleanPath}`;
+  };
+
+  const getBestSeason = (place) => {
+    const textToCheck = `
+      ${place.district || ''} 
+      ${place.name || ''} 
+      ${place.title || ''} 
+      ${place.location || ''} 
+      ${place.address || ''}
+    `.toLowerCase();
+
+    const eastAndNorthKeywords = [
+      'trincomalee', 'trinco', 'batticaloa', 'ampara', 'jaffna', 'kilinochchi', 
+      'mullaitivu', 'arugambay', 'arugam', 'pasikudah', 'nilaveli', 'pigeon island', 
+      'kalkudah', 'uppuveli', 'pottuvil', 'chundikulam'
+    ];
+
+    const isEastOrNorth = eastAndNorthKeywords.some((keyword) => textToCheck.includes(keyword));
+
+    if (isEastOrNorth) return 'May – Sep';
+    if (place.bestSeason && place.bestSeason !== 'Nov – Apr') return place.bestSeason;
+    if (place.bestTime && place.bestTime !== 'Nov – Apr') return place.bestTime;
+
+    return 'Nov – Apr';
   };
 
   useEffect(() => {
@@ -90,6 +118,27 @@ const Explore = () => {
     }
   };
 
+  const toggleItinerary = (place) => {
+    let updated;
+    const exists = itinerary.some((item) => item._id === place._id);
+
+    if (exists) {
+      updated = itinerary.filter((item) => item._id !== place._id);
+    } else {
+      updated = [...itinerary, place];
+    }
+
+    setItinerary(updated);
+    localStorage.setItem('ai_itinerary', JSON.stringify(updated));
+    window.dispatchEvent(new Event('itineraryUpdated'));
+  };
+
+  
+  // 🟢 handleFindDriver Function එක /drivers ලෙස වෙනස් කරන්න
+  const handleFindDriver = (placeName) => {
+    navigate(`/drivers?destination=${encodeURIComponent(placeName)}`);
+  };
+  
   const filteredPlaces = places.filter((place) => {
     const nameMatch = (place.name || place.title || '').toLowerCase().includes(searchTerm.toLowerCase());
     const districtMatch = (place.district || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -276,7 +325,7 @@ const Explore = () => {
 
         .sl-card {
           background: var(--paper);
-          border-radius: 4px;
+          border-radius: 6px;
           overflow: hidden;
           display: flex;
           flex-direction: column;
@@ -290,7 +339,7 @@ const Explore = () => {
         }
         .sl-card-image {
           position: relative;
-          height: 178px;
+          height: 185px;
           background: var(--paper-dim);
         }
         .sl-card-image img {
@@ -299,19 +348,80 @@ const Explore = () => {
           object-fit: cover;
           display: block;
         }
+
+        .sl-season-badge {
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          background: rgba(15, 46, 43, 0.85);
+          backdrop-filter: blur(4px);
+          border: 1px solid rgba(217, 164, 65, 0.45);
+          color: #F5EFE1;
+          font-family: 'IBM Plex Mono', monospace;
+          font-size: 0.68rem;
+          font-weight: 500;
+          padding: 0.28rem 0.55rem;
+          border-radius: 6px;
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+          z-index: 1;
+        }
+        .sl-season-badge .badge-label {
+          color: var(--gold);
+          font-weight: 600;
+        }
+
+        .sl-ai-add-btn {
+          position: absolute;
+          bottom: 10px;
+          right: 10px;
+          background: rgba(15, 46, 43, 0.88);
+          backdrop-filter: blur(6px);
+          border: 1px solid var(--gold);
+          color: var(--paper);
+          font-family: 'Inter', sans-serif;
+          font-size: 0.72rem;
+          font-weight: 600;
+          padding: 0.4rem 0.75rem;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+          z-index: 2;
+        }
+        .sl-ai-add-btn:hover {
+          background: var(--gold);
+          color: var(--ink);
+          transform: scale(1.04);
+        }
+        .sl-ai-add-btn.in-itinerary {
+          background: #2FA4A0;
+          border-color: #2FA4A0;
+          color: #0F2E2B;
+        }
+        .sl-ai-add-btn.in-itinerary:hover {
+          background: #288C88;
+        }
+
         .sl-stamp {
           position: absolute;
           top: 10px;
           right: 10px;
-          width: 46px;
-          height: 46px;
+          width: 42px;
+          height: 42px;
           border-radius: 50%;
           border: 1.5px dashed rgba(245,239,225,0.85);
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(15,46,43,0.55);
+          background: rgba(15,46,43,0.6);
           backdrop-filter: blur(2px);
+          z-index: 1;
         }
         .sl-perf {
           height: 0;
@@ -346,13 +456,38 @@ const Explore = () => {
           margin: 0 0 0.65rem;
         }
         .sl-card-desc {
-          margin: 0;
+          margin: 0 0 0.8rem;
           color: #3F4A45;
           font-size: 0.9rem;
           line-height: 1.5;
         }
+
+        /* 🟢 4. Find Driver Button Styling */
+        .sl-driver-btn {
+          width: 100%;
+          background: var(--ink);
+          color: var(--paper);
+          border: 1px solid var(--panel-edge);
+          padding: 0.55rem 0.8rem;
+          border-radius: 8px;
+          font-family: 'Inter', sans-serif;
+          font-size: 0.78rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+          transition: all 0.2s ease;
+          margin-bottom: 0.8rem;
+        }
+        .sl-driver-btn:hover {
+          background: var(--gold);
+          color: var(--ink);
+          border-color: var(--gold);
+        }
+
         .sl-card-footer {
-          margin-top: 1rem;
           padding-top: 0.8rem;
           border-top: 1px solid #E4DBC5;
           display: flex;
@@ -501,19 +636,32 @@ const Explore = () => {
               const catKey = CATEGORY_STYLE[place.category] ? place.category : 'General';
               const catColor = CATEGORY_STYLE[catKey].color;
               
-              // 🟢 Entire place object එක pass කර image URL එක ගනිමු
               const imageSrc = getImageUrl(place);
-
-              // 🟢 Entry fee values matching DB schema (entryFeeUSD / entryFee / price)
               const fee = place.entryFeeUSD ?? place.entryFee ?? place.price ?? 0;
+              const season = getBestSeason(place);
+              const isAdded = itinerary.some((item) => item._id === place._id);
+              const placeTitle = place.title || place.name;
 
               return (
                 <div key={place._id} className="sl-card">
                   <div className="sl-card-image">
                     <img
                       src={imageSrc}
-                      alt={place.title || place.name}
+                      alt={placeTitle}
                     />
+                    
+                    <div className="sl-season-badge">
+                      <span className="badge-label">Best:</span> {season}
+                    </div>
+
+                    <button
+                      className={`sl-ai-add-btn ${isAdded ? 'in-itinerary' : ''}`}
+                      onClick={() => toggleItinerary(place)}
+                      title={isAdded ? 'Remove from Itinerary' : 'Add to AI Itinerary'}
+                    >
+                      {isAdded ? <>✓ Added</> : <>✨ + AI Itinerary</>}
+                    </button>
+
                     <div className="sl-stamp" title={catKey}>
                       <CategoryIcon cat={catKey} size={18} />
                     </div>
@@ -521,7 +669,7 @@ const Explore = () => {
                   <div className="sl-perf" />
                   <div className="sl-card-body">
                     <div>
-                      <h3 className="sl-card-name">{place.title || place.name}</h3>
+                      <h3 className="sl-card-name">{placeTitle}</h3>
                       <p className="sl-card-district">📍 {place.district || 'Sri Lanka'}</p>
                       <p className="sl-card-desc">
                         {place.description
@@ -529,11 +677,22 @@ const Explore = () => {
                           : 'No description available.'}
                       </p>
                     </div>
-                    <div className="sl-card-footer">
-                      <span className="sl-price">
-                        {fee > 0 ? `$${fee} entry` : 'Free entry'}
-                      </span>
-                      <span className="sl-cat-tag" style={{ '--cat-color': catColor }}>{catKey}</span>
+
+                    <div>
+                      {/* 🟢 5. "Book Driver for [Place]" Button */}
+                      <button
+                        className="sl-driver-btn"
+                        onClick={() => handleFindDriver(placeTitle)}
+                      >
+                        🚗 Book Driver for {placeTitle}
+                      </button>
+
+                      <div className="sl-card-footer">
+                        <span className="sl-price">
+                          {fee > 0 ? `$${fee} entry` : 'Free entry'}
+                        </span>
+                        <span className="sl-cat-tag" style={{ '--cat-color': catColor }}>{catKey}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
