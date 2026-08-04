@@ -31,9 +31,11 @@ const getNearbyPlaces = async (req, res) => {
   }
 };
 
-// 🟢 4. Create New Place / Destination (Safe Version with Defaults)
+// 🟢 4. Create New Place / Destination
 const createPlace = async (req, res) => {
   try {
+    // req.body නොමැති නම් Empty Object එකක් ලබා ගැනීම
+    const body = req.body || {};
     const { 
       name, 
       title, 
@@ -45,7 +47,7 @@ const createPlace = async (req, res) => {
       image, 
       entryFee, 
       price 
-    } = req.body;
+    } = body;
 
     const placeName = name || title;
 
@@ -53,7 +55,14 @@ const createPlace = async (req, res) => {
       return res.status(400).json({ message: 'Place name or title is required' });
     }
 
-    // Mongoose Model එකේ required fields සඳහා Default values ලබා දීම
+    // 🟢 Image File එකක් Upload කර ඇත්නම් එහි URL එක සකස් කිරීම
+    let finalImageUrl = 'https://via.placeholder.com/300';
+    if (req.file) {
+      finalImageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    } else if (imageUrl || image) {
+      finalImageUrl = imageUrl || image;
+    }
+
     const newPlace = await Place.create({
       name: placeName,
       title: placeName,
@@ -61,8 +70,8 @@ const createPlace = async (req, res) => {
       category: category || 'Culture',
       province: province || district || 'General',
       district: district || 'Colombo',
-      imageUrl: imageUrl || image || 'https://via.placeholder.com/300',
-      images: imageUrl ? [imageUrl] : [],
+      imageUrl: finalImageUrl,
+      images: [finalImageUrl],
       entryFee: Number(entryFee || price || 0),
       price: Number(entryFee || price || 0),
       location: {
@@ -81,7 +90,12 @@ const createPlace = async (req, res) => {
 // 5. Update Place
 const updatePlace = async (req, res) => {
   try {
-    const updatedPlace = await Place.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = { ...req.body };
+    if (req.file) {
+      updateData.imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    }
+
+    const updatedPlace = await Place.findByIdAndUpdate(req.params.id, updateData, { new: true });
     res.json(updatedPlace);
   } catch (error) {
     res.status(500).json({ message: error.message });

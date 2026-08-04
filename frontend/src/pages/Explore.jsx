@@ -13,8 +13,6 @@ const CATEGORY_STYLE = {
   General:  { color: '#8A9E97', label: 'General' },
 };
 
-// Small hand-drawn line icons — one per category, kept in the subject's own
-// vernacular (temple eave, wave crest, ridgeline, paw, bowl) rather than emoji.
 const CategoryIcon = ({ cat, size = 15 }) => {
   const stroke = '#F5EFE1';
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke, strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' };
@@ -25,7 +23,7 @@ const CategoryIcon = ({ cat, size = 15 }) => {
       );
     case 'Beach':
       return (
-        <svg {...common}><path d="M3 17c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" /><path d="M3 21c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3 1.3 4.5 0 3-1.3 4.5 0" /><circle cx="17" cy="6" r="3" /></svg>
+        <svg {...common}><path d="M3 17c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3-1.3 4.5 0 3-1.3 4.5 0" /><path d="M3 21c1.5 1.3 3 1.3 4.5 0s3-1.3 4.5 0 3-1.3 4.5 0 3-1.3 4.5 0" /><circle cx="17" cy="6" r="3" /></svg>
       );
     case 'Hiking':
       return (
@@ -53,6 +51,26 @@ const Explore = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+
+  // 🟢 Database එකේ images Array එක හෝ සෙසු fields පරීක්ෂා කරන Helper Function එක
+  const getImageUrl = (place) => {
+    // DB එකේ images array එක ඇතුළේ මුල්ම image එක තිබේදැයි බලයි
+    const rawPath = (place.images && place.images.length > 0) 
+      ? place.images[0] 
+      : (place.imageUrl || place.image);
+
+    if (!rawPath) return 'https://images.unsplash.com/photo-1586861635167-e5223aadc9fe?w=600';
+
+    const cleanUrl = rawPath.replace(/\\/g, '/');
+
+    // DB එකේ දැනටමත් http://localhost:5000 ලෙස ඇති බැවින් කෙලින්ම return කරයි
+    if (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://')) {
+      return cleanUrl;
+    }
+
+    const cleanPath = cleanUrl.startsWith('/') ? cleanUrl : `/${cleanUrl}`;
+    return `http://localhost:5000${cleanPath}`;
+  };
 
   useEffect(() => {
     fetchPlaces();
@@ -105,7 +123,6 @@ const Explore = () => {
           padding-bottom: 4rem;
         }
 
-        /* ---------- HERO ---------- */
         .sl-hero {
           position: relative;
           padding: 4.5rem 1.5rem 6rem;
@@ -161,7 +178,6 @@ const Explore = () => {
           display: block;
         }
 
-        /* ---------- FILTER BAR ---------- */
         .sl-filterbar {
           max-width: 980px;
           margin: -3.1rem auto 2.75rem;
@@ -228,7 +244,6 @@ const Explore = () => {
           color: #0F2E2B;
         }
 
-        /* ---------- STATUS / ERROR ---------- */
         .sl-count {
           max-width: 980px;
           margin: 0 auto 1.2rem;
@@ -250,7 +265,6 @@ const Explore = () => {
           font-size: 0.9rem;
         }
 
-        /* ---------- GRID ---------- */
         .sl-grid {
           max-width: 1120px;
           margin: 0 auto;
@@ -260,7 +274,6 @@ const Explore = () => {
           gap: 1.6rem;
         }
 
-        /* ---------- CARD (postcard) ---------- */
         .sl-card {
           background: var(--paper);
           border-radius: 4px;
@@ -361,7 +374,6 @@ const Explore = () => {
           color: var(--cat-color);
         }
 
-        /* ---------- LOADING SKELETON ---------- */
         .sl-skel-card {
           background: var(--panel);
           border: 1px solid var(--panel-edge);
@@ -379,7 +391,6 @@ const Explore = () => {
           100% { background-position: -200% 0; }
         }
 
-        /* ---------- EMPTY STATE ---------- */
         .sl-empty {
           max-width: 980px;
           margin: 0 auto;
@@ -489,12 +500,19 @@ const Explore = () => {
             {filteredPlaces.map((place) => {
               const catKey = CATEGORY_STYLE[place.category] ? place.category : 'General';
               const catColor = CATEGORY_STYLE[catKey].color;
+              
+              // 🟢 Entire place object එක pass කර image URL එක ගනිමු
+              const imageSrc = getImageUrl(place);
+
+              // 🟢 Entry fee values matching DB schema (entryFeeUSD / entryFee / price)
+              const fee = place.entryFeeUSD ?? place.entryFee ?? place.price ?? 0;
+
               return (
                 <div key={place._id} className="sl-card">
                   <div className="sl-card-image">
                     <img
-                      src={place.imageUrl || place.image || 'https://images.unsplash.com/photo-1586861635167-e5223aadc9fe?w=600'}
-                      alt={place.name || place.title}
+                      src={imageSrc}
+                      alt={place.title || place.name}
                     />
                     <div className="sl-stamp" title={catKey}>
                       <CategoryIcon cat={catKey} size={18} />
@@ -503,7 +521,7 @@ const Explore = () => {
                   <div className="sl-perf" />
                   <div className="sl-card-body">
                     <div>
-                      <h3 className="sl-card-name">{place.name || place.title}</h3>
+                      <h3 className="sl-card-name">{place.title || place.name}</h3>
                       <p className="sl-card-district">📍 {place.district || 'Sri Lanka'}</p>
                       <p className="sl-card-desc">
                         {place.description
@@ -513,7 +531,7 @@ const Explore = () => {
                     </div>
                     <div className="sl-card-footer">
                       <span className="sl-price">
-                        {place.entryFee || place.price ? `$${place.entryFee || place.price} entry` : 'Free entry'}
+                        {fee > 0 ? `$${fee} entry` : 'Free entry'}
                       </span>
                       <span className="sl-cat-tag" style={{ '--cat-color': catColor }}>{catKey}</span>
                     </div>
